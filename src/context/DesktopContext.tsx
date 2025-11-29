@@ -12,6 +12,7 @@ export interface DesktopItem {
 
 interface DesktopContextType {
   items: DesktopItem[];
+  background: string;
   setItems: React.Dispatch<React.SetStateAction<DesktopItem[]>>;
   updateItemPosition: (id: string, x: number, y: number) => void;
 }
@@ -19,7 +20,8 @@ interface DesktopContextType {
 const DesktopContext = createContext<DesktopContextType | undefined>(undefined);
 
 export function DesktopProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<DesktopItem[]>(initialData);
+  const [items, setItems] = useState<DesktopItem[]>(initialData.icons);
+  const [background] = useState<string>(initialData.background);
 
   const updateItemPosition = (id: string, x: number, y: number) => {
     setItems(prev => prev.map(item => 
@@ -28,7 +30,7 @@ export function DesktopProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <DesktopContext.Provider value={{ items, setItems, updateItemPosition }}>
+    <DesktopContext.Provider value={{ items, background, setItems, updateItemPosition }}>
       {children}
     </DesktopContext.Provider>
   );
