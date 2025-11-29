@@ -1,0 +1,7 @@
+[
+  { "id": "organizer", "label": "Organizer", "type": "app", "x": 20, "y": 20, "imageUrl": "/icons/organizer.svg" },
+  { "id": "docs", "label": "Documents", "type": "folder", "x": 20, "y": 110, "imageUrl": "/icons/documents.svg" },
+  { "id": "settings", "label": "Settings", "type": "settings", "x": 20, "y": 200, "imageUrl": "/icons/settings.svg" },
+  { "id": "notes", "label": "Notes.txt", "type": "file", "x": 110, "y": 20, "imageUrl": "/icons/notes.svg" },
+  { "id": "photo", "label": "Photo.jpg", "type": "image", "x": 110, "y": 110, "imageUrl": "/icons/photo.svg" }
+]
