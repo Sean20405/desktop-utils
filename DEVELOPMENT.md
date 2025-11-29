@@ -1,48 +1,42 @@
-# 📖 開發指南 (Development Guide)
-
-這份指南是為了協助組員快速上手並進行後續功能的開發。
+# Development Guide
 
 ## 0. 環境建置與執行 (Setup & Run)
 
-從零開始建立開發環境的步驟：
-
-1.  **Clone 專案**
+1.  Clone 專案
     ```bash
     git clone https://github.com/Sean20405/desktop-utils.git
     cd desktop-utils
     ```
 
-2.  **安裝依賴套件**
-    確保你已經安裝了 Node.js (建議 v18+)。
+2.  安裝 dependencies
+    確保你已經安裝了 [Node.js](https://nodejs.org/zh-tw/download) (建議 v24+)。
     ```bash
     npm install
     ```
 
-3.  **啟動開發伺服器**
+3.  啟動開發伺服器
     ```bash
     npm run dev
     ```
 
-4.  **開啟瀏覽器**
-    伺服器啟動後，按住 `Ctrl` 並點擊終端機中的連結 (通常是 `http://localhost:5173`)。
-
-## 1. 專案結構
+## 專案結構
 
 ```
 src/
 ├── components/
-│   ├── OrganizerApp.tsx  # 應用程式內容
-│   ├── DesktopIcon.tsx   # 桌面圖示元件
-│   ├── Window.tsx        # 視窗元件
-│   ├── Desktop.tsx       # 桌面容器 (背景與圖示)
-│   ├── Taskbar.tsx       # 工作列
-│   └── WindowManager.tsx # 視窗管理器
-├── context/            # 全域狀態管理 (DesktopContext)
-├── data/               # 模擬資料庫 (desktop-icons.json)
-├── App.tsx             # 主程式入口 (桌面容器、視窗管理、工作列)
-└── index.css           # 全域樣式與 Tailwind 設定
+│   ├── OrganizerApp.tsx    # 桌面管理程式主內容
+│   ├── Window.tsx          # 視窗元件
+│   ├── WindowManager.tsx   # 視窗管理器
+│   ├── Desktop.tsx         # 桌面容器 (背景與圖示)
+│   ├── DesktopIcon.tsx     # 桌面圖示元件
+│   └── Taskbar.tsx         # 工作列
+├── context/
+│   └── DesktopContext.tsx  # 提供桌面圖示狀態與操作方法
+├── data/                   # 模擬資料庫（desktop.json）
+├── App.tsx                 # 主程式入口（桌面容器、視窗管理、工作列）
+└── index.css               # 全域樣式與 Tailwind 設定
 public/
-└── icons/              # 存放桌面圖示圖片 (.svg, .png)
+└── icons/                  # 存放桌面圖示圖片 (.svg, .png)
 ```
 
 ## 2. 設定桌面內容 (Desktop Configuration)
@@ -89,6 +83,9 @@ public/
 *   **`items`**: `DesktopItem[]` - 目前桌面上所有圖示的陣列。每個 item 包含 `id`, `label`, `type`, `x`, `y`, `imageUrl`。
 *   **`setItems`**: `React.Dispatch` - 用來更新整個圖示列表的函式。這是實作排序或過濾功能的關鍵。
 *   **`updateItemPosition`**: `(id, x, y) => void` - 僅更新單一圖示位置的輔助函式（通常用於拖曳結束時）。
+
+>[!Note]
+> 程式運行中的圖示狀態都儲存在 `DesktopContext`，而非 `/data/desktop.json`，該檔案僅負責紀錄初始位置。此設計是避免頻繁修改檔案內容，以及保留初始桌面狀態，以供下次啟動使用。
 
 ### 3.2 實作整理邏輯
 
