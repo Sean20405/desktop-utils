@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import initialData from '../data/desktop-icons.json';
+import initialData from '../data/desktop.json';
 
 export interface DesktopItem {
   id: string;

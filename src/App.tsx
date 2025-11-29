@@ -10,6 +10,8 @@ export interface WindowState {
   title: string;
   isOpen: boolean;
   position: { x: number; y: number };
+  size: { width: number; height: number };
+  isMaximized: boolean;
   type: 'organizer' | 'folder' | 'settings';
 }
 
@@ -22,6 +24,8 @@ function App() {
       title: 'Desktop Organizer',
       isOpen: false,
       position: { x: 100, y: 50 },
+      size: { width: 800, height: 600 },
+      isMaximized: false,
       type: 'organizer'
     }
   ]);
@@ -90,6 +94,24 @@ function App() {
     setActiveWindowId(id);
   };
 
+  const toggleMaximize = (id: string) => {
+    setWindows(prev => prev.map(w => {
+      if (w.id === id) {
+        return { ...w, isMaximized: !w.isMaximized };
+      }
+      return w;
+    }));
+  };
+
+  const resizeWindow = (id: string, size: { width: number; height: number }) => {
+    setWindows(prev => prev.map(w => {
+      if (w.id === id) {
+        return { ...w, size };
+      }
+      return w;
+    }));
+  };
+
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="relative w-full h-full overflow-hidden">
@@ -98,7 +120,9 @@ function App() {
           windows={windows} 
           activeWindowId={activeWindowId} 
           onCloseWindow={closeWindow} 
-          onFocusWindow={focusWindow} 
+          onFocusWindow={focusWindow}
+          onToggleMaximize={toggleMaximize}
+          onResizeWindow={resizeWindow}
         />
         <Taskbar 
           windows={windows} 
