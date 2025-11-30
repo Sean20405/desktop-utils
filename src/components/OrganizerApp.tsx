@@ -110,10 +110,10 @@ function DroppableArea({ children, isDragging }: { children: React.ReactNode; is
     <div
       ref={setNodeRef}
       className={`h-24 border rounded-lg flex items-center px-4 gap-2 overflow-x-auto transition-colors duration-200 ${isOver
-          ? "bg-green-50 border-green-300 ring-2 ring-green-200"
-          : isDragging
-            ? "bg-blue-50 border-blue-300 border-dashed ring-2 ring-blue-100"
-            : "bg-gray-50 border-gray-200"
+        ? "bg-green-50 border-green-300 ring-2 ring-green-200"
+        : isDragging
+          ? "bg-blue-50 border-blue-300 border-dashed ring-2 ring-blue-100"
+          : "bg-gray-50 border-gray-200"
         }`}
     >
       {React.Children.count(children) === 0 && !isDragging ? (
@@ -130,6 +130,19 @@ export function OrganizerApp() {
   const [rules, setRules] = useState<{ id: string; text: string; type: "category" | "action" }[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeItem, setActiveItem] = useState<{ text: string; type: "category" | "action" } | null>(null);
+  const [starred, setStarred] = useState<Set<number>>(new Set([1])); // Track starred history items
+
+  const toggleStar = (id: number) => {
+    setStarred(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
@@ -207,9 +220,9 @@ export function OrganizerApp() {
 
             {/* Buttons */}
             <div className="flex gap-3">
-              <button className="px-6 py-2 border rounded-lg bg-white hover:bg-gray-50">Save</button>
-              <button className="px-6 py-2 border rounded-lg bg-white hover:bg-gray-50">Preview</button>
-              <button className="px-6 py-2 border rounded-lg bg-white hover:bg-gray-50">Run</button>
+              <button className="cursor-pointer active:scale-95 px-6 py-2 border rounded-lg bg-white hover:bg-gray-50">Save</button>
+              <button className="cursor-pointer active:scale-95 px-6 py-2 border rounded-lg bg-white hover:bg-gray-50">Preview</button>
+              <button className="cursor-pointer active:scale-95 px-6 py-2 border rounded-lg bg-white hover:bg-gray-50">Run</button>
             </div>
           </div>
 
@@ -220,19 +233,19 @@ export function OrganizerApp() {
             <div className="flex mb-4 border-b">
               <button
                 onClick={() => setTab("rule")}
-                className={`flex-1 py-2 text-center ${tab === "rule" ? 'bg-orange-100 font-semibold' : ''}`}
+                className={`cursor-pointer active:scale-95 flex-1 py-2 text-center ${tab === "rule" ? 'bg-orange-100 font-semibold' : ''}`}
               >
                 Rule
               </button>
               <button
                 onClick={() => setTab("tag")}
-                className={`flex-1 py-2 text-center ${tab === "tag" ? 'bg-orange-100 font-semibold' : ''}`}
+                className={`cursor-pointer active:scale-95 flex-1 py-2 text-center ${tab === "tag" ? 'bg-orange-100 font-semibold' : ''}`}
               >
                 Tag
               </button>
               <button
                 onClick={() => setTab("history")}
-                className={`flex-1 py-2 text-center ${tab === "history" ? 'bg-orange-100 font-semibold' : ''}`}
+                className={`cursor-pointer active:scale-95 flex-1 py-2 text-center ${tab === "history" ? 'bg-orange-100 font-semibold' : ''}`}
               >
                 History
               </button>
@@ -302,11 +315,11 @@ export function OrganizerApp() {
 
                 {/* Buttons */}
                 <div className="mt-auto flex gap-3">
-                  <button className="flex-1 py-2 border rounded-lg bg-white">AI Generate Tag</button>
-                  <button className="flex-1 py-2 border rounded-lg bg-white">AI Assign Tag</button>
+                  <button className="cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg bg-white">AI Generate Tag</button>
+                  <button className="cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg bg-white">AI Assign Tag</button>
                 </div>
 
-                <button className="mt-3 p-2 text-red-600 border rounded-lg flex items-center justify-center gap-2">
+                <button className="cursor-pointer active:scale-95 mt-3 p-2 text-red-600 border rounded-lg flex items-center justify-center gap-2">
                   <Trash2 size={18} /> Delete Tag
                 </button>
               </div>
@@ -315,26 +328,38 @@ export function OrganizerApp() {
             {/* ===== HISTORY PAGE ===== */}
             {tab === "history" && (
               <div className="flex flex-col gap-4">
-                {[1, 2].map((i) => (
-                  <div key={i} className="border rounded-lg p-3">
-                    <div className="flex items-center justify-between">
-                      <div className="font-medium">2025/10/23 {i === 1 ? "10:50" : "08:50"}</div>
-                      <Star size={20} className={i === 1 ? "text-yellow-500" : "text-gray-400"} />
+                {[1, 2].map((i) => {
+                  const isStarred = starred.has(i);
+                  return (
+                    <div
+                      key={i}
+                      className={`border rounded-lg p-3 transition-colors ${isStarred ? "border-orange-400" : "border-gray-200"
+                        }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="font-medium">2025/10/23 {i === 1 ? "10:50" : "08:50"}</div>
+                        <Star
+                          size={20}
+                          className={`cursor-pointer transition-colors ${isStarred ? "text-orange-400 fill-orange-400" : "text-gray-400"
+                            }`}
+                          onClick={() => toggleStar(i)}
+                        />
+                      </div>
+
+                      <div className="text-sm text-gray-600 mb-3">
+                        Rules: {i === 1 ? "sort game in date" : "another rule"}
+                      </div>
+
+                      <div className="w-full h-20 bg-gray-200 rounded mb-3" />
+
+                      <button className="cursor-pointer active:scale-95 px-4 py-2 border rounded-lg bg-white">
+                        Rollback
+                      </button>
                     </div>
+                  );
+                })}
 
-                    <div className="text-sm text-gray-600 mb-3">
-                      Rules: {i === 1 ? "sort game in date" : "another rule"}
-                    </div>
-
-                    <div className="w-full h-20 bg-gray-200 rounded mb-3" />
-
-                    <button className="px-4 py-2 border rounded-lg bg-white">
-                      Rollback
-                    </button>
-                  </div>
-                ))}
-
-                <button className="text-red-600 flex items-center justify-center gap-2 border rounded-lg py-2">
+                <button className="cursor-pointer active:scale-95 text-red-600 flex items-center justify-center gap-2 border rounded-lg py-2">
                   <Trash2 size={18} /> Delete All History
                 </button>
               </div>
@@ -353,6 +378,6 @@ export function OrganizerApp() {
           ) : null}
         </DragOverlay>
       </div>
-    </DndContext>
+    </DndContext >
   );
 }
