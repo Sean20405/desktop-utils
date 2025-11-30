@@ -119,6 +119,7 @@ export function Window({
         </div>
         
         <div className="flex items-center" onMouseDown={(e) => e.stopPropagation()}>
+          {/* TODO: implement minimizing the windows */}
           <button className="p-2 hover:bg-gray-100 rounded-md text-gray-500 transition-colors">
             <Minus size={14} />
           </button>
