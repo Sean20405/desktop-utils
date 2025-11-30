@@ -23,8 +23,8 @@ function App() {
       id: 'organizer',
       title: 'Desktop Organizer',
       isOpen: false,
-      position: { x: 100, y: 50 },
-      size: { width: 800, height: 600 },
+      position: { x: 250, y: 20 },
+      size: { width: 1100, height: 650 },
       isMaximized: false,
       type: 'organizer'
     }
@@ -116,18 +116,18 @@ function App() {
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="relative w-full h-full overflow-hidden">
         <Desktop onOpenWindow={openWindow} />
-        <WindowManager 
-          windows={windows} 
-          activeWindowId={activeWindowId} 
-          onCloseWindow={closeWindow} 
+        <WindowManager
+          windows={windows}
+          activeWindowId={activeWindowId}
+          onCloseWindow={closeWindow}
           onFocusWindow={focusWindow}
           onToggleMaximize={toggleMaximize}
           onResizeWindow={resizeWindow}
         />
-        <Taskbar 
-          windows={windows} 
-          activeWindowId={activeWindowId} 
-          onFocusWindow={focusWindow} 
+        <Taskbar
+          windows={windows}
+          activeWindowId={activeWindowId}
+          onFocusWindow={focusWindow}
         />
       </div>
     </DndContext>
