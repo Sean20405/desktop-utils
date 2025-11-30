@@ -1,7 +1,9 @@
 import React, { useMemo, useState } from "react";
-import { ChevronDown, Star, Trash2 } from "lucide-react";
+import { ChevronDown, Star, Trash2, X, Plus, GripVertical } from "lucide-react";
 import { useDesktop } from "../context/DesktopContext";
 import { DndContext, DragOverlay, useDraggable, useDroppable, type DragStartEvent, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 function DesktopPreview() {
   const { items } = useDesktop();
@@ -125,12 +127,172 @@ function DroppableArea({ children, isDragging }: { children: React.ReactNode; is
   );
 }
 
+// Sortable Tag Item Component
+function SortableTagItem({
+  tag,
+  onToggleExpand,
+  onStartEdit,
+  onDelete,
+  onColorChange,
+  isEditing,
+  editValue,
+  onEditChange,
+  onSaveEdit
+}: {
+  tag: { id: string; name: string; color: string; items: string[]; expanded: boolean };
+  onToggleExpand: () => void;
+  onStartEdit: () => void;
+  onDelete: () => void;
+  onColorChange: (color: string) => void;
+  isEditing: boolean;
+  editValue: string;
+  onEditChange: (value: string) => void;
+  onSaveEdit: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: tag.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="border rounded-lg bg-white">
+      <div className="flex items-center gap-2 p-3">
+        {/* Drag Handle */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-100 rounded"
+        >
+          <GripVertical size={18} className="text-gray-400" />
+        </div>
+
+        {/* Expand/Collapse */}
+        <button
+          onClick={onToggleExpand}
+          className="cursor-pointer p-1 hover:bg-gray-100 rounded transition-transform"
+          style={{ transform: tag.expanded ? 'rotate(0deg)' : 'rotate(-90deg)' }}
+        >
+          <ChevronDown size={18} />
+        </button>
+
+        {/* Color Picker - Circular */}
+        <div className="relative">
+          <div
+            onClick={() => {
+              const input = document.getElementById(`color-${tag.id}`) as HTMLInputElement;
+              input?.click();
+            }}
+            className="w-6 h-6 rounded-full cursor-pointer border-2 border-white shadow-md hover:scale-110 transition-transform"
+            style={{ backgroundColor: tag.color }}
+            title="Change color"
+          />
+          <input
+            id={`color-${tag.id}`}
+            type="color"
+            value={tag.color}
+            onChange={(e) => onColorChange(e.target.value)}
+            className="absolute opacity-0 w-0 h-0"
+          />
+        </div>
+
+        {/* Tag Name (Editable) */}
+        {isEditing ? (
+          <input
+            type="text"
+            value={editValue}
+            onChange={(e) => onEditChange(e.target.value)}
+            onBlur={onSaveEdit}
+            onKeyPress={(e) => e.key === 'Enter' && onSaveEdit()}
+            className="flex-1 px-2 py-1 border rounded outline-none focus:border-orange-400"
+            autoFocus
+          />
+        ) : (
+          <div
+            onClick={onStartEdit}
+            className="flex-1 font-medium cursor-pointer hover:bg-gray-50 px-2 py-1 rounded"
+          >
+            {tag.name}
+          </div>
+        )}
+
+        {/* Items Count */}
+        <div className="text-sm text-gray-500">
+          ({tag.items.length})
+        </div>
+
+        {/* Delete Button */}
+        <button
+          onClick={onDelete}
+          className="cursor-pointer active:scale-95 p-1 rounded hover:bg-red-100 text-red-600 transition-colors"
+          title="Delete tag"
+        >
+          <X size={18} />
+        </button>
+      </div>
+
+      {/* Expanded Items */}
+      {tag.expanded && tag.items.length > 0 && (
+        <div className="px-3 pb-3 pt-0">
+          <div className="flex gap-2 flex-wrap p-2 bg-gray-50 rounded">
+            {tag.items.map((item, idx) => (
+              <div
+                key={idx}
+                className="px-3 py-1 rounded-lg text-sm"
+                style={{ backgroundColor: tag.color + '40' }}
+              >
+                {item}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function OrganizerApp() {
   const [tab, setTab] = useState<"rule" | "tag" | "history">("rule");
   const [rules, setRules] = useState<{ id: string; text: string; type: "category" | "action" }[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeItem, setActiveItem] = useState<{ text: string; type: "category" | "action" } | null>(null);
   const [starred, setStarred] = useState<Set<number>>(new Set([1])); // Track starred history items
+
+  // Tag management with expanded data structure
+  const [tags, setTags] = useState<{ id: string; name: string; color: string; items: string[]; expanded: boolean }[]>([
+    {
+      id: "all",
+      name: "ALL",
+      color: "#fb923c",
+      items: ["Game 1", "Game 2", "Game 3", "Game 4", "doc 1", "doc 2"],
+      expanded: true
+    },
+    {
+      id: "games",
+      name: "Games",
+      color: "#60a5fa",
+      items: ["Game 1", "Game 2", "Game 3", "Game 4"],
+      expanded: false
+    },
+    {
+      id: "file-related",
+      name: "File Related",
+      color: "#4ade80",
+      items: ["doc 1", "doc 2"],
+      expanded: false
+    }
+  ]);
+  const [editingTagId, setEditingTagId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
 
   const toggleStar = (id: number) => {
     setStarred(prev => {
@@ -142,6 +304,72 @@ export function OrganizerApp() {
       }
       return newSet;
     });
+  };
+
+  // Create new tag with auto-naming
+  const createNewTag = () => {
+    let baseName = "NewTag";
+    let counter = 0;
+    let newName = baseName;
+
+    // Check for existing names and increment counter
+    while (tags.some(tag => tag.name === newName)) {
+      counter++;
+      newName = `${baseName}${counter}`;
+    }
+
+    const newTag = {
+      id: `tag-${Date.now()}`,
+      name: newName,
+      color: "#fb923c",
+      items: [],
+      expanded: true
+    };
+    setTags(prev => [...prev, newTag]);
+  };
+
+  const deleteTag = (id: string) => {
+    setTags(prev => prev.filter(tag => tag.id !== id));
+  };
+
+  const toggleTagExpand = (id: string) => {
+    setTags(prev => prev.map(tag =>
+      tag.id === id ? { ...tag, expanded: !tag.expanded } : tag
+    ));
+  };
+
+  const startEditingTag = (id: string, currentName: string) => {
+    setEditingTagId(id);
+    setEditingName(currentName);
+  };
+
+  const saveTagName = (id: string) => {
+    if (editingName.trim()) {
+      setTags(prev => prev.map(tag =>
+        tag.id === id ? { ...tag, name: editingName.trim() } : tag
+      ));
+    }
+    setEditingTagId(null);
+    setEditingName("");
+  };
+
+  const updateTagColor = (id: string, color: string) => {
+    setTags(prev => prev.map(tag =>
+      tag.id === id ? { ...tag, color } : tag
+    ));
+  };
+
+  const handleTagDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setTags((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -281,46 +509,49 @@ export function OrganizerApp() {
 
             {/* ===== TAG PAGE ===== */}
             {tab === "tag" && (
-              <div className="flex flex-col h-full">
+              <div className="flex flex-col h-full gap-4">
 
-                {/* ALL Tags */}
-                <div className="flex flex-col border-b pb-3 mb-3">
-                  <div className="font-semibold mb-2">ALL</div>
-                  <div className="flex gap-2 flex-wrap">
-                    {["Game 1", "Game 2", "Game 3", "Game 4", "doc 1", "doc 2"].map((t, i) => (
-                      <div key={i} className="px-3 py-1 bg-orange-200 rounded-lg">{t}</div>
-                    ))}
+                {/* Create New Tag Button */}
+                <button
+                  onClick={createNewTag}
+                  className="cursor-pointer active:scale-95 w-full py-3 bg-orange-400 text-white rounded-lg hover:bg-orange-500 flex items-center justify-center gap-2 font-medium"
+                >
+                  <Plus size={20} /> Create New Tag
+                </button>
+
+                {/* Tags List with Drag-to-Reorder */}
+                <DndContext onDragEnd={handleTagDragEnd}>
+                  <div className="flex-1 overflow-y-auto">
+                    <div className="font-semibold mb-3 text-sm">All Tags ({tags.length})</div>
+                    <SortableContext items={tags.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                      <div className="flex flex-col gap-2">
+                        {tags.map((tag) => (
+                          <SortableTagItem
+                            key={tag.id}
+                            tag={tag}
+                            onToggleExpand={() => toggleTagExpand(tag.id)}
+                            onStartEdit={() => startEditingTag(tag.id, tag.name)}
+                            onDelete={() => deleteTag(tag.id)}
+                            onColorChange={(color) => updateTagColor(tag.id, color)}
+                            isEditing={editingTagId === tag.id}
+                            editValue={editingName}
+                            onEditChange={setEditingName}
+                            onSaveEdit={() => saveTagName(tag.id)}
+                          />
+                        ))}
+                      </div>
+                    </SortableContext>
                   </div>
+                </DndContext>
+
+                {/* AI Buttons */}
+                <div className="flex gap-3 pt-3 border-t">
+                  <button className="cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg bg-white hover:bg-gray-50">AI Generate Tag</button>
+                  <button className="cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg bg-white hover:bg-gray-50">AI Assign Tag</button>
                 </div>
 
-                {/* Game category */}
-                <div className="flex flex-col border-b pb-3 mb-3">
-                  <div className="font-semibold mb-2">Games</div>
-                  <div className="flex gap-2 flex-wrap">
-                    {["Game 1", "Game 2", "Game 3", "Game 4"].map((t, i) => (
-                      <div key={i} className="px-3 py-1 bg-blue-200 rounded-lg">{t}</div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* File category */}
-                <div className="flex flex-col pb-3">
-                  <div className="font-semibold mb-2">File related</div>
-                  <div className="flex gap-2 flex-wrap">
-                    {["doc 1", "doc 2"].map((t, i) => (
-                      <div key={i} className="px-3 py-1 bg-green-200 rounded-lg">{t}</div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Buttons */}
-                <div className="mt-auto flex gap-3">
-                  <button className="cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg bg-white">AI Generate Tag</button>
-                  <button className="cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg bg-white">AI Assign Tag</button>
-                </div>
-
-                <button className="cursor-pointer active:scale-95 mt-3 p-2 text-red-600 border rounded-lg flex items-center justify-center gap-2">
-                  <Trash2 size={18} /> Delete Tag
+                <button className="cursor-pointer active:scale-95 p-2 text-red-600 border rounded-lg flex items-center justify-center gap-2 hover:bg-red-50">
+                  <Trash2 size={18} /> Delete All Tags
                 </button>
               </div>
             )}
