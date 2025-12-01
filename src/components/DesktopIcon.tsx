@@ -9,9 +9,10 @@ interface DesktopIconProps {
   imageUrl?: string;
   onClick: () => void;
   position: { x: number; y: number };
+  isVisible?: boolean;
 }
 
-export function DesktopIcon({ id, label, imageUrl, onClick, position }: DesktopIconProps) {
+export function DesktopIcon({ id, label, imageUrl, onClick, position, isVisible = true }: DesktopIconProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `icon-${id}`,
   });
@@ -22,6 +23,8 @@ export function DesktopIcon({ id, label, imageUrl, onClick, position }: DesktopI
     top: position.y,
     position: 'absolute' as const,
     zIndex: isDragging ? 100 : 1,
+    opacity: isVisible ? 1 : 0.2,
+    transition: 'opacity 0.2s ease-in-out',
   };
 
   return (

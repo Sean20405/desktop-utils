@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DndContext, useSensor, useSensors, PointerSensor, type DragEndEvent } from '@dnd-kit/core';
 import { useDesktop } from './context/DesktopContext';
 import { Desktop } from './components/Desktop';
 import { WindowManager } from './components/WindowManager';
 import { Taskbar } from './components/Taskbar';
+import { SearchBar } from './components/SearchBar';
 
 export interface WindowState {
   id: string;
@@ -18,6 +19,8 @@ export interface WindowState {
 function App() {
   const { items, updateItemPosition } = useDesktop();
   const [activeWindowId, setActiveWindowId] = useState<string | null>(null);
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [windows, setWindows] = useState<WindowState[]>([
     {
       id: 'organizer',
@@ -37,6 +40,19 @@ function App() {
       },
     })
   );
+
+  // 監聽 Ctrl+F 快捷鍵
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        setIsSearchOpen(prev => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event;
@@ -115,7 +131,7 @@ function App() {
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="relative w-full h-full overflow-hidden">
-        <Desktop onOpenWindow={openWindow} />
+        <Desktop onOpenWindow={openWindow} searchQuery={searchQuery} />
         <WindowManager
           windows={windows}
           activeWindowId={activeWindowId}
@@ -128,6 +144,15 @@ function App() {
           windows={windows}
           activeWindowId={activeWindowId}
           onFocusWindow={focusWindow}
+        />
+        <SearchBar
+          isOpen={isSearchOpen}
+          onClose={() => {
+            setIsSearchOpen(false);
+            setSearchQuery('');
+          }}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
         />
       </div>
     </DndContext>
