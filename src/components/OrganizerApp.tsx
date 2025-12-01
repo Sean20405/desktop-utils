@@ -338,6 +338,10 @@ export function OrganizerApp() {
     setSavedRules((prev) => [newRule, ...prev]);
   };
 
+  const deleteSavedRule = (id: string) => {
+    setSavedRules((prev) => prev.filter((rule) => rule.id !== id));
+  };
+
   // Create new tag with auto-naming
   const createNewTag = () => {
     let baseName = "NewTag";
@@ -582,13 +586,20 @@ export function OrganizerApp() {
                             key={rule.id}
                             className="border rounded-lg px-3 py-2 bg-white shadow-[inset_0_1px_0_rgba(0,0,0,0.02)]"
                           >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="text-sm text-gray-800 truncate">
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm text-gray-800 truncate flex-1">
                                 {rule.name || rule.blocks.join(" • ")}
                               </div>
                               <span className="text-[10px] text-gray-400 shrink-0">
                                 #{filteredSavedRules.length - idx}
                               </span>
+                              <button
+                                onClick={() => deleteSavedRule(rule.id)}
+                                className="p-1 rounded hover:bg-red-50 text-red-500 shrink-0 cursor-pointer active:scale-95"
+                                title="Delete saved rule"
+                              >
+                                <Trash2 size={14} />
+                              </button>
                             </div>
                           </div>
                         ))
