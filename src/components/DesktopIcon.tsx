@@ -1,6 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { clsx } from 'clsx';
+import { getAssetUrl } from '../utils/assetUtils';
 
 interface DesktopIconProps {
   id: string;
@@ -37,7 +38,7 @@ export function DesktopIcon({ id, label, imageUrl, onClick, position }: DesktopI
     >
       <div className="w-12 h-12 flex items-center justify-center drop-shadow-lg group-hover:scale-105 transition-transform duration-200">
         {imageUrl ? (
-          <img src={imageUrl} alt={label} className="w-full h-full object-contain pointer-events-none" />
+          <img src={getAssetUrl(imageUrl)} alt={label} className="w-full h-full object-contain pointer-events-none" />
         ) : (
           <div className="w-full h-full bg-gray-400 rounded-lg" />
         )}
