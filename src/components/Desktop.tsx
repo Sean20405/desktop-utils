@@ -1,6 +1,6 @@
-import React from 'react';
 import { DesktopIcon } from './DesktopIcon';
 import { useDesktop } from '../context/DesktopContext';
+import { getAssetUrl } from '../utils/assetUtils';
 
 interface DesktopProps {
   onOpenWindow: (id: string) => void;
@@ -14,7 +14,7 @@ export function Desktop({ onOpenWindow, searchQuery }: DesktopProps) {
     <div 
       className="relative w-full h-full bg-cover bg-center overflow-hidden"
       style={{ 
-        backgroundImage: `url("${background}")` 
+        backgroundImage: `url("${getAssetUrl(background)}")` 
       }}
     >
       {/* Desktop Icons Grid */}

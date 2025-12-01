@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { ChevronDown, Star, Trash2, X, Plus, GripVertical } from "lucide-react";
+import { ChevronDown, ChevronUp, Star, Trash2, X, Plus, GripVertical } from "lucide-react";
 import { useDesktop } from "../context/DesktopContext";
 import { DndContext, DragOverlay, useDraggable, useDroppable, type DragStartEvent, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
@@ -266,6 +266,25 @@ export function OrganizerApp() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [activeItem, setActiveItem] = useState<{ text: string; type: "category" | "action" } | null>(null);
   const [starred, setStarred] = useState<Set<number>>(new Set([1])); // Track starred history items
+  const [searchQuery, setSearchQuery] = useState("");
+  const [savedRules, setSavedRules] = useState<{ id: string; name: string; blocks: string[] }[]>([
+    {
+      id: "saved-1",
+      name: 'Move all files with tag "game" to "game" folder',
+      blocks: ['All files with tag "game"', 'Move to default folder'],
+    },
+    {
+      id: "saved-2",
+      name: "Move all icons",
+      blocks: ["All files", "Move to a new folder"],
+    },
+    {
+      id: "saved-3",
+      name: "Archived rule",
+      blocks: ["..."],
+    },
+  ]);
+  const [showSavedList, setShowSavedList] = useState(false);
 
   // Tag management with expanded data structure
   const [tags, setTags] = useState<{ id: string; name: string; color: string; items: string[]; expanded: boolean }[]>([
@@ -304,6 +323,23 @@ export function OrganizerApp() {
       }
       return newSet;
     });
+  };
+
+  const handleSaveRule = () => {
+    const blocks = rules.length ? rules.map((r) => r.text) : ["(empty rule)"];
+    const inferredName =
+      blocks.length > 1 ? `${blocks[0]} → ${blocks[1]}` : blocks[0];
+    const name = inferredName || `Rule ${savedRules.length + 1}`;
+    const newRule = {
+      id: `saved-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
+      name,
+      blocks,
+    };
+    setSavedRules((prev) => [newRule, ...prev]);
+  };
+
+  const deleteSavedRule = (id: string) => {
+    setSavedRules((prev) => prev.filter((rule) => rule.id !== id));
   };
 
   // Create new tag with auto-naming
@@ -421,6 +457,17 @@ export function OrganizerApp() {
     "Sort by (criteria)"
   ];
 
+  const filteredSavedRules = showSavedList
+    ? savedRules.filter((rule) => {
+      const q = searchQuery.trim().toLowerCase();
+      if (!q) return true;
+      return (
+        rule.name.toLowerCase().includes(q) ||
+        rule.blocks.some((b) => b.toLowerCase().includes(q))
+      );
+    })
+    : savedRules;
+
   return (
     <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="h-full flex flex-col p-3 gap-3 overflow-hidden">
@@ -448,7 +495,12 @@ export function OrganizerApp() {
 
             {/* Buttons */}
             <div className="flex gap-3">
-              <button className="cursor-pointer active:scale-95 px-6 py-2 border rounded-lg bg-white hover:bg-gray-50">Save</button>
+              <button
+                onClick={handleSaveRule}
+                className="cursor-pointer active:scale-95 px-6 py-2 border rounded-lg bg-white hover:bg-gray-50"
+              >
+                Save
+              </button>
               <button className="cursor-pointer active:scale-95 px-6 py-2 border rounded-lg bg-white hover:bg-gray-50">Preview</button>
               <button className="cursor-pointer active:scale-95 px-6 py-2 border rounded-lg bg-white hover:bg-gray-50">Run</button>
             </div>
@@ -482,28 +534,99 @@ export function OrganizerApp() {
             {/* ===== RULE PAGE ===== */}
             {tab === "rule" && (
               <div className="flex flex-col gap-3">
-                <div className="flex items-center border rounded-lg p-2">
-                  <input className="flex-1 outline-none" placeholder="save rule" />
-                  <ChevronDown size={18} />
+                <div className="flex items-center border rounded-lg p-2 gap-2">
+                  <input
+                    className="flex-1 outline-none"
+                    placeholder={showSavedList ? "search saved rules" : "saved rules"}
+                    value={showSavedList ? searchQuery : ""}
+                    readOnly={!showSavedList}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      if (showSavedList) setSearchQuery(value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        if (showSavedList) {
+                          // Just prevent form submits; filtering is live
+                          e.preventDefault();
+                        } else {
+                          handleSaveRule();
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      setShowSavedList((prev) => {
+                        const next = !prev;
+                        if (next) {
+                          setSearchQuery("");
+                        }
+                        return next;
+                      });
+                    }}
+                    className="cursor-pointer active:scale-95 p-2 hover:bg-gray-100 rounded-lg border"
+                    title={showSavedList ? "Hide saved rules" : "Show saved rules"}
+                  >
+                    {showSavedList ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                  </button>
                 </div>
 
-                <div className="font-semibold text-sm text-gray-700">Categories</div>
-                <div className="grid grid-cols-1 gap-2">
-                  {categories.map((text, idx) => (
-                    <DraggableItem key={`cat-${idx}`} id={`cat-${idx}`} type="category">
-                      {text}
-                    </DraggableItem>
-                  ))}
-                </div>
+                {showSavedList ? (
+                  <div className="flex flex-col gap-2">
+                    <div className="font-semibold text-sm text-gray-700">Saved Rules</div>
+                    <div className="flex flex-col gap-2 max-h-[460px] overflow-y-auto pr-1">
+                      {filteredSavedRules.length === 0 ? (
+                        <div className="border rounded-lg px-3 py-2 text-sm text-gray-500 bg-white">
+                          {searchQuery.trim() ? "No matches found." : "No saved rules yet."}
+                        </div>
+                      ) : (
+                        filteredSavedRules.map((rule, idx) => (
+                          <div
+                            key={rule.id}
+                            className="border rounded-lg px-3 py-2 bg-white shadow-[inset_0_1px_0_rgba(0,0,0,0.02)]"
+                          >
+                            <div className="flex items-center gap-2">
+                              <div className="text-sm text-gray-800 truncate flex-1">
+                                {rule.name || rule.blocks.join(" • ")}
+                              </div>
+                              <span className="text-[10px] text-gray-400 shrink-0">
+                                #{filteredSavedRules.length - idx}
+                              </span>
+                              <button
+                                onClick={() => deleteSavedRule(rule.id)}
+                                className="p-1 rounded hover:bg-red-50 text-red-500 shrink-0 cursor-pointer active:scale-95"
+                                title="Delete saved rule"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div className="font-semibold text-sm text-gray-700">Categories</div>
+                    <div className="grid grid-cols-1 gap-2">
+                      {categories.map((text, idx) => (
+                        <DraggableItem key={`cat-${idx}`} id={`cat-${idx}`} type="category">
+                          {text}
+                        </DraggableItem>
+                      ))}
+                    </div>
 
-                <div className="font-semibold text-sm mt-3 text-gray-700">Actions</div>
-                <div className="grid grid-cols-1 gap-2">
-                  {actions.map((text, idx) => (
-                    <DraggableItem key={`act-${idx}`} id={`act-${idx}`} type="action">
-                      {text}
-                    </DraggableItem>
-                  ))}
-                </div>
+                    <div className="font-semibold text-sm mt-3 text-gray-700">Actions</div>
+                    <div className="grid grid-cols-1 gap-2">
+                      {actions.map((text, idx) => (
+                        <DraggableItem key={`act-${idx}`} id={`act-${idx}`} type="action">
+                          {text}
+                        </DraggableItem>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             )}
 

@@ -1,6 +1,6 @@
-import React from 'react';
 import { Monitor } from 'lucide-react';
 import { useDesktop } from '../context/DesktopContext';
+import { getAssetUrl } from '../utils/assetUtils';
 
 interface WindowState {
   id: string;
@@ -54,7 +54,7 @@ export function Taskbar({ windows, activeWindowId, onFocusWindow }: TaskbarProps
             >
               <div className="flex items-center justify-center w-6 h-6">
                 {item?.imageUrl ? (
-                  <img src={item.imageUrl} alt={window.title} className="w-full h-full object-contain" />
+                  <img src={getAssetUrl(item.imageUrl)} alt={window.title} className="w-full h-full object-contain" />
                 ) : (
                   <Monitor size={20} className="text-blue-300" />
                 )}
