@@ -1,4 +1,3 @@
-import React from 'react';
 import { DesktopIcon } from './DesktopIcon';
 import { useDesktop } from '../context/DesktopContext';
 
