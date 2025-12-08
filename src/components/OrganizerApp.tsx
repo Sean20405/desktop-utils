@@ -249,10 +249,12 @@ function DraggableFileItem({
   fileName,
   tagColor,
   sourceTagId,
+  onDelete,
 }: {
   fileName: string;
   tagColor: string;
   sourceTagId: string;
+  onDelete?: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `file-${sourceTagId}-${fileName}`,
@@ -267,15 +269,31 @@ function DraggableFileItem({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onDelete?.();
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={{ backgroundColor: tagColor + "40", ...style }}
-      {...listeners}
-      {...attributes}
-      className="px-3 py-1 rounded-lg text-sm cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity"
+      className="relative group px-3 py-1 rounded-lg text-sm cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity"
     >
-      {fileName}
+      <div {...listeners} {...attributes} className="pr-2">
+        {fileName}
+      </div>
+      {onDelete && (
+        <button
+          onClick={handleDelete}
+          className="absolute top-1/2 -translate-y-1/2 right-1 w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-full"
+          title="從此標籤中移除"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <X size={12} />
+        </button>
+      )}
     </div>
   );
 }
@@ -291,6 +309,7 @@ function SortableTagItem({
   editValue,
   onEditChange,
   onSaveEdit,
+  onRemoveFile,
 }: {
   tag: { id: string; name: string; color: string; items: string[]; expanded: boolean };
   onToggleExpand: () => void;
@@ -301,6 +320,7 @@ function SortableTagItem({
   editValue: string;
   onEditChange: (value: string) => void;
   onSaveEdit: () => void;
+  onRemoveFile: (fileName: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tag.id });
   const { setNodeRef: setDroppableRef, isOver } = useDroppable({
@@ -389,7 +409,13 @@ function SortableTagItem({
             {tag.items.length > 0 ? (
               <div className="flex gap-2 flex-wrap p-2 bg-gray-50 rounded">
                 {tag.items.map((item, idx) => (
-                  <DraggableFileItem key={idx} fileName={item} tagColor={tag.color} sourceTagId={tag.id} />
+                  <DraggableFileItem
+                    key={idx}
+                    fileName={item}
+                    tagColor={tag.color}
+                    sourceTagId={tag.id}
+                    onDelete={() => onRemoveFile(item)}
+                  />
                 ))}
               </div>
             ) : (
@@ -623,6 +649,20 @@ export function OrganizerApp() {
 
   const deleteTag = (id: string) => {
     setTags((prev) => prev.filter((tag) => tag.id !== id));
+  };
+
+  const removeFileFromTag = (tagId: string, fileName: string) => {
+    setTags((prev) =>
+      prev.map((tag) => {
+        if (tag.id === tagId) {
+          return {
+            ...tag,
+            items: tag.items.filter((item) => item !== fileName),
+          };
+        }
+        return tag;
+      })
+    );
   };
 
   const toggleTagExpand = (id: string) => {
@@ -1105,6 +1145,7 @@ export function OrganizerApp() {
                           editValue={editingName}
                           onEditChange={setEditingName}
                           onSaveEdit={() => saveTagName(tag.id)}
+                          onRemoveFile={(fileName) => removeFileFromTag(tag.id, fileName)}
                         />
                       ))}
                     </div>
