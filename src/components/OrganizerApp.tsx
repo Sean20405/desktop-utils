@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, GripVertical, MoreVertical, Star, Trash2, X, Plus } from "lucide-react";
+import { ChevronDown, GripVertical, MoreVertical, Star, Trash2, X, Plus, Loader2 } from "lucide-react";
 import { useDesktop } from "../context/DesktopContext";
 import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { generateTagsFromFiles, assignFilesToTags } from "../utils/geminiApi";
 
 type HierarchyNode = { label: string; children?: HierarchyNode[] };
 
@@ -432,30 +433,34 @@ export function OrganizerApp() {
     },
   ]);
   const [tags, setTags] = useState<{ id: string; name: string; color: string; items: string[]; expanded: boolean }[]>([
-    {
-      id: "all",
-      name: "ALL",
-      color: "#fb923c",
-      items: ["Game 1", "Game 2", "Game 3", "Game 4", "doc 1", "doc 2"],
-      expanded: true,
-    },
-    {
-      id: "games",
-      name: "Games",
-      color: "#60a5fa",
-      items: ["Game 1", "Game 2", "Game 3", "Game 4"],
-      expanded: false,
-    },
-    {
-      id: "file-related",
-      name: "File Related",
-      color: "#4ade80",
-      items: ["doc 1", "doc 2"],
-      expanded: false,
-    },
+    // 預設標籤已註解，可以通過 AI Generate Tag 或手動創建標籤
+    // {
+    //   id: "all",
+    //   name: "ALL",
+    //   color: "#fb923c",
+    //   items: ["Game 1", "Game 2", "Game 3", "Game 4", "doc 1", "doc 2"],
+    //   expanded: true,
+    // },
+    // {
+    //   id: "games",
+    //   name: "Games",
+    //   color: "#60a5fa",
+    //   items: ["Game 1", "Game 2", "Game 3", "Game 4"],
+    //   expanded: false,
+    // },
+    // {
+    //   id: "file-related",
+    //   name: "File Related",
+    //   color: "#4ade80",
+    //   items: ["doc 1", "doc 2"],
+    //   expanded: false,
+    // },
   ]);
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [isGeneratingTags, setIsGeneratingTags] = useState(false);
+  const [isAssigningTags, setIsAssigningTags] = useState(false);
+  const { items } = useDesktop();
 
   const toggleHistoryStar = (id: string) => {
     setHistoryItems((prev) =>
@@ -568,6 +573,127 @@ export function OrganizerApp() {
 
         return arrayMove(items, oldIndex, newIndex);
       });
+    }
+  };
+
+  // AI Generate Tag 功能
+  const handleAIGenerateTags = async () => {
+    if (isGeneratingTags) return;
+    
+    setIsGeneratingTags(true);
+    try {
+      // 獲取桌面上的所有檔案（排除 "ALL" 標籤）
+      const desktopFiles = items.map(item => ({
+        id: item.id,
+        label: item.label,
+        type: item.type,
+      }));
+
+      if (desktopFiles.length === 0) {
+        alert('桌面上沒有檔案可以分析');
+        return;
+      }
+
+      // 調用 Gemini API 生成標籤
+      const generatedTags = await generateTagsFromFiles(desktopFiles);
+
+      // 將生成的標籤添加到現有標籤列表（排除 "ALL" 標籤）
+      const existingTagNames = tags.filter(t => t.id !== 'all').map(t => t.name.toLowerCase());
+      const newTags = generatedTags
+        .filter(tag => !existingTagNames.includes(tag.name.toLowerCase()))
+        .map(tag => ({
+          id: `tag-${Date.now()}-${Math.random()}`,
+          name: tag.name,
+          color: tag.color || '#fb923c',
+          items: [],
+          expanded: true,
+        }));
+
+      if (newTags.length > 0) {
+        setTags(prev => {
+          // 保留 "ALL" 標籤在第一位，其他標籤在後面
+          const allTag = prev.find(t => t.id === 'all');
+          const otherTags = prev.filter(t => t.id !== 'all');
+          return allTag ? [allTag, ...otherTags, ...newTags] : [...otherTags, ...newTags];
+        });
+        alert(`成功生成 ${newTags.length} 個新標籤！`);
+      } else {
+        alert('沒有生成新的標籤（可能所有標籤都已存在）');
+      }
+    } catch (error) {
+      console.error('生成標籤時發生錯誤:', error);
+      const errorMessage = error instanceof Error ? error.message : '未知錯誤';
+      alert(`生成標籤時發生錯誤：\n${errorMessage}\n\n請確認：\n.env 文件已正確設置`);
+    } finally {
+      setIsGeneratingTags(false);
+    }
+  };
+
+  // AI Assign Tag 功能
+  const handleAIAssignTags = async () => {
+    if (isAssigningTags) return;
+
+    // 排除 "ALL" 標籤
+    const existingTags = tags.filter(t => t.id !== 'all');
+    
+    if (existingTags.length === 0) {
+      alert('請先創建至少一個標籤（除了 ALL）');
+      return;
+    }
+
+    setIsAssigningTags(true);
+    try {
+      // 獲取桌面上的所有檔案
+      const desktopFiles = items.map(item => ({
+        id: item.id,
+        label: item.label,
+        type: item.type,
+      }));
+
+      if (desktopFiles.length === 0) {
+        alert('桌面上沒有檔案可以分配');
+        return;
+      }
+
+      // 準備現有標籤資訊（只包含名稱和現有檔案）
+      const tagsForAPI = existingTags.map(tag => ({
+        name: tag.name,
+        items: tag.items,
+      }));
+
+      // 調用 Gemini API 分配檔案
+      const assignments = await assignFilesToTags(desktopFiles, tagsForAPI);
+
+      // 更新標籤，將檔案分配到對應的標籤下
+      setTags(prev => {
+        return prev.map(tag => {
+          if (tag.id === 'all') {
+            // 更新 ALL 標籤，包含所有桌面檔案
+            const allFileNames = items.map(item => item.label);
+            return { ...tag, items: allFileNames };
+          }
+
+          // 找到對應的分配結果
+          const assignment = assignments.find(a => a.tagName === tag.name);
+          if (assignment && assignment.files.length > 0) {
+            // 合併現有檔案和新分配的檔案，去重
+            const mergedItems = Array.from(new Set([...tag.items, ...assignment.files]));
+            return { ...tag, items: mergedItems };
+          }
+
+          return tag;
+        });
+      });
+
+      const totalAssigned = assignments.reduce((sum, a) => sum + a.files.length, 0);
+      alert(`成功將 ${totalAssigned} 個檔案分配到標籤！`);
+    } catch (error) {
+      console.error('分配檔案時發生錯誤:', error);
+      const errorMessage = error instanceof Error ? error.message : '未知錯誤';
+      console.log('errorMessage: ', errorMessage);
+      alert(`分配檔案時發生錯誤：\n${errorMessage}\n\n請確認：\n1. .env 文件已正確設置\n`);
+    } finally {
+      setIsAssigningTags(false);
     }
   };
 
@@ -782,11 +908,33 @@ export function OrganizerApp() {
                 </DndContext>
 
                 <div className="flex gap-3 pt-3 border-t shrink-0">
-                  <button className="cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg bg-white hover:bg-gray-50">
-                    AI Generate Tag
+                  <button
+                    onClick={handleAIGenerateTags}
+                    disabled={isGeneratingTags || isAssigningTags}
+                    className="cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isGeneratingTags ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        <span>生成中...</span>
+                      </>
+                    ) : (
+                      'AI Generate Tag'
+                    )}
                   </button>
-                  <button className="cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg bg-white hover:bg-gray-50">
-                    AI Assign Tag
+                  <button
+                    onClick={handleAIAssignTags}
+                    disabled={isGeneratingTags || isAssigningTags}
+                    className="cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isAssigningTags ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        <span>分配中...</span>
+                      </>
+                    ) : (
+                      'AI Assign Tag'
+                    )}
                   </button>
                 </div>
 
