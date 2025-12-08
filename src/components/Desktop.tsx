@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
-import { useDraggable } from '@dnd-kit/core';
+import { useEffect, useState } from 'react';
+import { Shuffle } from 'lucide-react';
 import { useDesktop } from '../context/DesktopContext';
 import { DesktopIcon } from './DesktopIcon';
 import { ContextMenu } from './ContextMenu';
 import { getAssetUrl } from '../utils/assetUtils';
-import { GRID_WIDTH, GRID_HEIGHT, GRID_START_X, GRID_START_Y } from '../constants/gridConstants';
+import { GRID_WIDTH, GRID_HEIGHT, GRID_START_X, GRID_START_Y, shufflePositions } from '../constants/gridConstants';
 
 interface DesktopProps {
   onOpenWindow: (id: string) => void;
@@ -83,6 +83,12 @@ export function Desktop({ onOpenWindow, searchQuery }: DesktopProps) {
     setItems(newItems);
   };
 
+  const handleShuffle = () => {
+    const maxHeight = referenceSize.height - TASKBAR_HEIGHT;
+    const shuffledItems = shufflePositions(items, referenceSize.width, maxHeight);
+    setItems(shuffledItems);
+  };
+
   return (
     <div
       className="relative w-full h-full bg-cover bg-center overflow-hidden"
@@ -112,6 +118,15 @@ export function Desktop({ onOpenWindow, searchQuery }: DesktopProps) {
           );
         })}
       </div>
+
+      {/* Floating Shuffle Button */}
+      <button
+        onClick={handleShuffle}
+        className="absolute top-4 right-4 bg-white/90 hover:bg-white shadow-lg rounded-full p-3 transition-all hover:scale-110 active:scale-95 z-10 backdrop-blur-sm border border-gray-200"
+        title="隨機打亂圖示位置"
+      >
+        <Shuffle size={20} className="text-gray-700" />
+      </button>
 
       {contextMenu && (
         <ContextMenu
