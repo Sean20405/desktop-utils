@@ -5,6 +5,7 @@ import { DndContext, type DragEndEvent, useDraggable, useDroppable } from "@dnd-
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { generateTagsFromFiles, assignFilesToTags, hasGeminiApiKey, setGeminiApiKey } from "../utils/geminiApi";
+import { getAssetUrl } from "../utils/assetUtils";
 
 type HierarchyNode = { label: string; children?: HierarchyNode[] };
 
@@ -63,21 +64,7 @@ function DraggablePreviewFile({
     },
   });
 
-  const resolveIconUrl = (url?: string) => {
-    if (!url) return "";
-    if (url.startsWith("http") || url.startsWith("data:") || url.startsWith("blob:")) return url;
-    
-    const base = import.meta.env.BASE_URL || "/";
-    
-    // Avoid double-prefixing if the path already contains the base URL
-    if (url.startsWith(base)) {
-      return url;
-    }
-
-    return `${base}${url.replace(/^\//, "")}`;
-  };
-
-  const iconSrc = resolveIconUrl(item.imageUrl);
+  const iconSrc = getAssetUrl(item.imageUrl);
   const dragStyle = CSS.Translate.toString(transform);
 
   return (
@@ -320,14 +307,7 @@ function DraggableFileItem({
   // 根據檔案名稱找到對應的桌面項目
   const desktopItem = items.find(item => item.label === fileName);
   
-  const resolveIconUrl = (url?: string) => {
-    if (!url) return "";
-    if (url.startsWith("http")) return url;
-    const base = import.meta.env.BASE_URL || "/";
-    return `${base}${url.replace(/^\//, "")}`;
-  };
-
-  const iconSrc = desktopItem?.imageUrl ? resolveIconUrl(desktopItem.imageUrl) : null;
+  const iconSrc = desktopItem?.imageUrl ? getAssetUrl(desktopItem.imageUrl) : null;
 
   return (
     <div
