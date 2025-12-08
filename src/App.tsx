@@ -6,6 +6,9 @@ import { WindowManager } from './components/WindowManager';
 import { Taskbar } from './components/Taskbar';
 import { SearchBar } from './components/SearchBar';
 import { UploadScreen } from './components/UploadScreen';
+import { loadDebugData } from './utils/debugUtils';
+
+const SKIP_UPLOAD = true; // Set to true to skip upload screen for debugging
 
 export interface WindowState {
   id: string;
@@ -31,6 +34,16 @@ function App() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  useEffect(() => {
+    if (SKIP_UPLOAD && !isLoaded) {
+      loadDebugData().then(({ items, size }) => {
+        setItems(items);
+        setReferenceSize(size);
+        setIsLoaded(true);
+      });
+    }
+  }, [isLoaded, setItems, setReferenceSize, setIsLoaded]);
 
   const [windows, setWindows] = useState<WindowState[]>([
     {
