@@ -5,7 +5,9 @@ import { DndContext, type DragEndEvent, useDraggable } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { generateTagsFromFiles, assignFilesToTags, hasGeminiApiKey, setGeminiApiKey } from "../utils/geminiApi";
+import { executeRule, parseRuleText } from "../utils/ruleEngine";
 import type { SimpleRule, HistoryEntry } from './OrganizerTypes';
+import type { DesktopItem } from '../context/DesktopContext';
 import { HistoryPanel } from './OrganizerHistory';
 import { TagsPanel } from './OrganizerTag';
 import { RulesPanel, SavedRulesSection } from './OrganizerRule';
@@ -71,8 +73,8 @@ function DraggablePreviewFile({
   );
 }
 
-function DesktopPreview() {
-  const { items, background } = useDesktop();
+function DesktopPreview({ previewItems }: { previewItems: DesktopItem[] }) {
+  const { background } = useDesktop();
 
   // Keep preview proportional to a 1920x1080 desktop but scaled down without stretching layout.
   const { scale, previewWidth, previewHeight } = useMemo(() => {
@@ -99,7 +101,7 @@ function DesktopPreview() {
           backgroundRepeat: "no-repeat",
         }}
       >
-        {items.map((item) => (
+        {previewItems.map((item) => (
           <DraggablePreviewFile key={item.id} item={item} scale={scale} />
         ))}
       </div>
@@ -174,7 +176,18 @@ export function OrganizerApp() {
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [pendingAction, setPendingAction] = useState<"generate" | "assign" | null>(null);
-  const { items } = useDesktop();
+  const { items, setItems } = useDesktop();
+
+  // Preview state
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [previewItems, setPreviewItems] = useState<DesktopItem[]>(items);
+
+  // Update preview items when desktop items change
+  useEffect(() => {
+    if (!isPreviewMode) {
+      setPreviewItems(items);
+    }
+  }, [items, isPreviewMode]);
 
   const toggleHistoryStar = (id: string) => {
     setHistoryItems((prev) =>
@@ -230,6 +243,81 @@ export function OrganizerApp() {
 
   const deleteSavedRule = (id: string) => {
     setSavedRules((prev) => prev.filter((rule) => rule.id !== id));
+  };
+
+  // Handle Preview
+  const handlePreview = () => {
+    if (rules.length === 0) {
+      alert('請先添加至少一個規則');
+      return;
+    }
+
+    // Execute all rules in order
+    let resultItems = [...items];
+    let success = false;
+
+    for (const rule of rules) {
+      const parsed = parseRuleText(rule.text);
+      if (parsed) {
+        const result = executeRule(parsed.subject, parsed.action, resultItems);
+        if (result) {
+          resultItems = result.items;
+          success = true;
+        }
+      }
+    }
+
+    if (success) {
+      setPreviewItems(resultItems);
+      setIsPreviewMode(true);
+    } else {
+      alert('無法執行這些規則，請檢查規則格式');
+    }
+  };
+
+  // Handle Apply
+  const handleApply = () => {
+    if (rules.length === 0) {
+      alert('請先添加至少一個規則');
+      return;
+    }
+
+    // Execute all rules in order
+    let resultItems = [...items];
+    const descriptions: string[] = [];
+
+    for (const rule of rules) {
+      const parsed = parseRuleText(rule.text);
+      if (parsed) {
+        const result = executeRule(parsed.subject, parsed.action, resultItems);
+        if (result) {
+          resultItems = result.items;
+          descriptions.push(result.description);
+        }
+      }
+    }
+
+    if (descriptions.length > 0) {
+      // Apply to actual desktop
+      setItems(resultItems);
+      setPreviewItems(resultItems);
+      setIsPreviewMode(false);
+
+      // Add to history
+      const now = new Date();
+      const timeStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const newHistoryEntry: HistoryEntry = {
+        id: `h-${Date.now()}`,
+        time: timeStr,
+        title: `Rules: ${descriptions.join(', ')}`,
+        starred: false,
+      };
+      setHistoryItems((prev) => [newHistoryEntry, ...prev]);
+
+      alert('規則已成功應用!');
+    } else {
+      alert('無法執行這些規則，請檢查規則格式');
+    }
   };
 
   const createNewTag = () => {
@@ -563,6 +651,8 @@ export function OrganizerApp() {
       onRemoveRule={handleRemoveRule}
       onDragEnd={handleRuleDragEnd}
       onToggleMenu={(id) => setOpenRuleMenu(prev => prev === id ? null : id)}
+      onPreview={handlePreview}
+      onApply={handleApply}
     />
   );
 
@@ -586,7 +676,7 @@ export function OrganizerApp() {
         <div className="flex flex-1 gap-4 min-h-0">
           <div className="flex-[1.2] flex flex-col gap-3 min-w-[520px]">
             <div className="h-[360px] rounded-2xl overflow-hidden shadow-inner border border-gray-500 bg-gradient-to-b from-gray-800 to-gray-700">
-              <DesktopPreview />
+              <DesktopPreview previewItems={previewItems} />
             </div>
 
             <SavedRulesSection

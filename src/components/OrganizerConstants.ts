@@ -1,6 +1,7 @@
 import type { HierarchyNode } from './OrganizerTypes';
 
 export const subjectOptions: HierarchyNode[] = [
+    { label: "All files" },
     {
         label: "Tags",
         children: [{ label: "LLM generate" }],
@@ -24,6 +25,7 @@ export const subjectOptions: HierarchyNode[] = [
 ];
 
 export const actionOptions: HierarchyNode[] = [
+    { label: "Sort by name" },
     { label: 'Put in "__" folder named' },
     {
         label: "Sort by __ starting {x,y} in __ direction (push away obstacles)",
