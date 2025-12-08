@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
-import { DesktopIcon } from './DesktopIcon';
+import { useEffect, useRef, useState } from 'react';
+import { useDraggable } from '@dnd-kit/core';
 import { useDesktop } from '../context/DesktopContext';
-import { getAssetUrl } from '../utils/assetUtils';
+import { DesktopIcon } from './DesktopIcon';
 import { ContextMenu } from './ContextMenu';
+import { getAssetUrl } from '../utils/assetUtils';
+import { GRID_WIDTH, GRID_HEIGHT, GRID_START_X, GRID_START_Y } from '../constants/gridConstants';
 
 interface DesktopProps {
   onOpenWindow: (id: string) => void;
@@ -28,7 +30,7 @@ export function Desktop({ onOpenWindow, searchQuery }: DesktopProps) {
   // Calculate ratios based on available desktop area
   const ratioX = windowSize.width / referenceSize.width;
   const ratioY = Math.max(0, windowSize.height - TASKBAR_HEIGHT) / Math.max(1, referenceSize.height - TASKBAR_HEIGHT);
-  
+
   // Keep icons at original size
   const iconScale = 1;
 
@@ -39,24 +41,20 @@ export function Desktop({ onOpenWindow, searchQuery }: DesktopProps) {
 
   // TODO: context menu actions, will be replaced by functions inside organizer
   const handleOrganize = () => {
-    const startX = 20;
-    const startY = 20;
-    const gapX = 100;
-    const gapY = 110;
     const maxHeight = referenceSize.height - TASKBAR_HEIGHT - ICON_HEIGHT;
 
-    let currentX = startX;
-    let currentY = startY;
+    let currentX = GRID_START_X;
+    let currentY = GRID_START_Y;
 
     const newItems = items.map(item => {
       const newItem = { ...item, x: currentX, y: currentY };
-      
-      currentY += gapY;
+
+      currentY += GRID_HEIGHT;
       if (currentY > maxHeight) {
-        currentY = startY;
-        currentX += gapX;
+        currentY = GRID_START_Y;
+        currentX += GRID_WIDTH;
       }
-      
+
       return newItem;
     });
 
@@ -65,25 +63,20 @@ export function Desktop({ onOpenWindow, searchQuery }: DesktopProps) {
 
   const handleSortByName = () => {
     const sortedItems = [...items].sort((a, b) => a.label.localeCompare(b.label, 'zh-TW'));
-    
-    const startX = 20;
-    const startY = 20;
-    const gapX = 100;
-    const gapY = 110;
     const maxHeight = referenceSize.height - TASKBAR_HEIGHT - ICON_HEIGHT;
 
-    let currentX = startX;
-    let currentY = startY;
+    let currentX = GRID_START_X;
+    let currentY = GRID_START_Y;
 
     const newItems = sortedItems.map(item => {
       const newItem = { ...item, x: currentX, y: currentY };
-      
-      currentY += gapY;
+
+      currentY += GRID_HEIGHT;
       if (currentY > maxHeight) {
-        currentY = startY;
-        currentX += gapX;
+        currentY = GRID_START_Y;
+        currentX += GRID_WIDTH;
       }
-      
+
       return newItem;
     });
 
@@ -91,24 +84,24 @@ export function Desktop({ onOpenWindow, searchQuery }: DesktopProps) {
   };
 
   return (
-    <div 
+    <div
       className="relative w-full h-full bg-cover bg-center overflow-hidden"
-      style={{ 
-        backgroundImage: `url("${getAssetUrl(background)}")` 
+      style={{
+        backgroundImage: `url("${getAssetUrl(background)}")`
       }}
       onContextMenu={handleContextMenu}
     >
       {/* Desktop Icons Grid */}
       <div className="absolute inset-0 pointer-events-none">
         {items.map(item => {
-          const isMatch = searchQuery === '' || 
+          const isMatch = searchQuery === '' ||
             item.label.toLowerCase().includes(searchQuery.toLowerCase());
-          
+
           return (
             <div key={item.id} className="pointer-events-auto">
-              <DesktopIcon 
+              <DesktopIcon
                 id={item.id}
-                label={item.label} 
+                label={item.label}
                 imageUrl={item.imageUrl}
                 onClick={() => onOpenWindow(item.id)}
                 position={{ x: item.x * ratioX, y: item.y * ratioY }}

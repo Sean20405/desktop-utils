@@ -7,6 +7,8 @@ import { Taskbar } from './components/Taskbar';
 import { SearchBar } from './components/SearchBar';
 import { UploadScreen } from './components/UploadScreen';
 import { loadDebugData } from './utils/debugUtils';
+import { GRID_WIDTH, GRID_HEIGHT, GRID_START_X, GRID_START_Y } from './constants/gridConstants';
+import { findNearestAvailablePosition } from './utils/gridUtils';
 
 const SKIP_UPLOAD = true; // Set to true to skip upload screen for debugging
 
@@ -122,16 +124,15 @@ function App() {
         const newX = item.x + delta.x / ratioX;
         const newY = item.y + delta.y / ratioY;
 
-        // Snap to grid (90x90 grid with 20px offset)
-        const gridSize = 90;
-        const offsetX = 20;
-        const offsetY = 20;
+        // Find nearest available position (prevents overlaps)
+        const { x: finalX, y: finalY } = findNearestAvailablePosition(
+          newX,
+          newY,
+          iconId,
+          items
+        );
 
-        // Calculate snapped position
-        const snappedX = Math.round((newX - offsetX) / gridSize) * gridSize + offsetX;
-        const snappedY = Math.round((newY - offsetY) / gridSize) * gridSize + offsetY;
-
-        updateItemPosition(iconId, snappedX, snappedY);
+        updateItemPosition(iconId, finalX, finalY);
       }
     }
   };

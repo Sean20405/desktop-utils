@@ -1,5 +1,6 @@
 import type { DesktopItem } from '../context/DesktopContext';
 import type { TagItem } from '../components/OrganizerTypes';
+import { GRID_WIDTH, GRID_HEIGHT, GRID_START_X, GRID_START_Y } from '../constants/gridConstants';
 
 export interface RuleExecutionResult {
     items: DesktopItem[];
@@ -216,10 +217,7 @@ function sortItems(
         }
     });
 
-    const startX = 20;
-    const startY = 20;
-    const gridSpacingX = 90;
-    const gridSpacingY = 90;
+    // Use centralized grid constants
     const iconsPerRow = 10;
 
     const occupiedPositions = new Set(
@@ -233,8 +231,8 @@ function sortItems(
 
     function findNextAvailablePosition(): { row: number; col: number } {
         while (true) {
-            const x = startX + currentCol * gridSpacingX;
-            const y = startY + currentRow * gridSpacingY;
+            const x = GRID_START_X + currentCol * GRID_WIDTH;
+            const y = GRID_START_Y + currentRow * GRID_HEIGHT;
             const posKey = `${x},${y}`;
 
             if (!occupiedPositions.has(posKey)) {
@@ -251,8 +249,8 @@ function sortItems(
 
     const arrangedTargetItems = sortedTargetItems.map((item) => {
         const { row, col } = findNextAvailablePosition();
-        const x = startX + col * gridSpacingX;
-        const y = startY + row * gridSpacingY;
+        const x = GRID_START_X + col * GRID_WIDTH;
+        const y = GRID_START_Y + row * GRID_HEIGHT;
 
         occupiedPositions.add(`${x},${y}`);
 

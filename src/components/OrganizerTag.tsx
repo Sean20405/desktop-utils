@@ -4,6 +4,7 @@ import { useDraggable, useDroppable } from "@dnd-kit/core";
 import { useSortable, SortableContext, verticalListSortingStrategy, type DragEndEvent } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useDesktop } from "../context/DesktopContext";
+import { getAssetUrl } from "../utils/assetUtils";
 import type { TagItem } from './OrganizerTypes';
 
 // Draggable File Item Component
@@ -41,14 +42,8 @@ function DraggableFileItem({
     // 根據檔案名稱找到對應的桌面項目
     const desktopItem = items.find(item => item.label === fileName);
 
-    const resolveIconUrl = (url?: string) => {
-        if (!url) return "";
-        if (url.startsWith("http")) return url;
-        const base = import.meta.env.BASE_URL || "/";
-        return `${base}${url.replace(/^\//, "")}`;
-    };
-
-    const iconSrc = desktopItem?.imageUrl ? resolveIconUrl(desktopItem.imageUrl) : null;
+    // Use getAssetUrl to resolve icon URL consistently
+    const iconSrc = desktopItem?.imageUrl ? getAssetUrl(desktopItem.imageUrl) : null;
 
     return (
         <div
