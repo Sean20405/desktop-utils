@@ -152,50 +152,30 @@ export function OrganizerApp() {
   const [subjectSelection, setSubjectSelection] = useState<string>("");
   const [actionSelection, setActionSelection] = useState<string>("");
   const [folderName, setFolderName] = useState<string>("");
-  const [historyItems, setHistoryItems] = useState<HistoryEntry[]>([
-    {
-      id: "h-1",
-      time: "2025/10/23 10:50",
-      title: "Rules: sort game in date",
-      starred: true,
-    },
-    {
-      id: "h-2",
-      time: "2025/10/23 08:50",
-      title: "Rules: another rule",
-      starred: false,
-    },
-    {
-      id: "h-3",
-      time: "2025/10/22 20:10",
-      title: "Rules: cleanup docs",
-      starred: true,
-    },
-  ]);
-  const [tags, setTags] = useState<{ id: string; name: string; color: string; items: string[]; expanded: boolean }[]>([
-    // 預設標籤已註解，可以通過 AI Generate Tag 或手動創建標籤
-    // {
-    //   id: "all",
-    //   name: "ALL",
-    //   color: "#fb923c",
-    //   items: ["Game 1", "Game 2", "Game 3", "Game 4", "doc 1", "doc 2"],
-    //   expanded: true,
-    // },
-    // {
-    //   id: "games",
-    //   name: "Games",
-    //   color: "#60a5fa",
-    //   items: ["Game 1", "Game 2", "Game 3", "Game 4"],
-    //   expanded: false,
-    // },
-    // {
-    //   id: "file-related",
-    //   name: "File Related",
-    //   color: "#4ade80",
-    //   items: ["doc 1", "doc 2"],
-    //   expanded: false,
-    // },
-  ]);
+  // Load history from localStorage or start with empty array
+  const [historyItems, setHistoryItems] = useState<HistoryEntry[]>(() => {
+    const savedHistory = localStorage.getItem('organizerHistory');
+    if (savedHistory) {
+      try {
+        return JSON.parse(savedHistory);
+      } catch (e) {
+        console.error('Failed to parse saved history:', e);
+      }
+    }
+    return [];
+  });
+  // Load tags from localStorage or start with empty array
+  const [tags, setTags] = useState<{ id: string; name: string; color: string; items: string[]; expanded: boolean }[]>(() => {
+    const savedTags = localStorage.getItem('organizerTags');
+    if (savedTags) {
+      try {
+        return JSON.parse(savedTags);
+      } catch (e) {
+        console.error('Failed to parse saved tags:', e);
+      }
+    }
+    return [];
+  });
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [isGeneratingTags, setIsGeneratingTags] = useState(false);
@@ -225,6 +205,16 @@ export function OrganizerApp() {
   useEffect(() => {
     localStorage.setItem('organizerSavedRules', JSON.stringify(savedRules));
   }, [savedRules]);
+
+  // Save tags to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('organizerTags', JSON.stringify(tags));
+  }, [tags]);
+
+  // Save history to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('organizerHistory', JSON.stringify(historyItems));
+  }, [historyItems]);
 
   const toggleHistoryStar = (id: string) => {
     setHistoryItems((prev) =>
