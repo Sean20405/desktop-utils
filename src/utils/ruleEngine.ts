@@ -1,8 +1,27 @@
 import type { DesktopItem } from '../context/DesktopContext';
+import type { TagItem } from '../components/OrganizerTypes';
 
 export interface RuleExecutionResult {
     items: DesktopItem[];
     description: string;
+}
+
+export interface RuleContext {
+    items: DesktopItem[];
+    tags?: TagItem[];
+}
+
+export interface RuleParams {
+    // For "Put in folder"
+    folderName?: string;
+    // For "Tags > [tagName]"
+    tagName?: string;
+    // For "f-string"
+    pattern?: string;
+    // For "Time > ..."
+    timeField?: 'lastAccessed' | 'lastModified' | 'createdTime';
+    timeValue?: number;
+    timeUnit?: 'day' | 'month' | 'year';
 }
 
 /**
@@ -11,10 +30,13 @@ export interface RuleExecutionResult {
 export function executeRule(
     subject: string,
     action: string,
-    items: DesktopItem[]
+    context: RuleContext,
+    params?: RuleParams
 ): RuleExecutionResult | null {
+    const { items, tags } = context;
+
     // Step 1: Filter items based on subject
-    let filteredItems = filterItemsBySubject(subject, items);
+    let filteredItems = filterItemsBySubject(subject, items, tags, params);
 
     // Step 2: Execute action on filtered items
     if (action === "Sort by name") {
@@ -38,20 +60,23 @@ export function executeRule(
     }
 
     // Handle "Put in folder" action
-    // Extract folder name from action text like 'Put in "MyFolder" folder'
     if (action.startsWith('Put in "') && action.endsWith('" folder')) {
-        const folderName = action.slice(8, -8); // Extract text between quotes (fixed: was 9)
+        const folderName = action.slice(8, -8);
         return putInFolder(filteredItems, items, folderName);
     }
 
-    // Add more actions here as needed
     return null;
 }
 
 /**
  * Filter items based on subject criteria
  */
-function filterItemsBySubject(subject: string, items: DesktopItem[]): DesktopItem[] {
+function filterItemsBySubject(
+    subject: string,
+    items: DesktopItem[],
+    tags?: TagItem[],
+    params?: RuleParams
+): DesktopItem[] {
     // Handle "All files"
     if (subject === "All files") {
         return items;
@@ -63,7 +88,24 @@ function filterItemsBySubject(subject: string, items: DesktopItem[]): DesktopIte
         return filterByFileType(items, fileType);
     }
 
-    // Default: return all items
+    // Handle "Tags > [tagName]"
+    if (subject.startsWith("Tags > ")) {
+        const tagName = subject.replace("Tags > ", "");
+        return filterByTag(items, tagName, tags || []);
+    }
+
+    // Handle "f-string"
+    if (subject === "f-string" && params?.pattern) {
+        return filterByPattern(items, params.pattern);
+    }
+
+    // Handle "Time > ..."
+    if (subject.startsWith("Time > ")) {
+        if (params?.timeField && params?.timeValue && params?.timeUnit) {
+            return filterByTime(items, params.timeField, params.timeValue, params.timeUnit);
+        }
+    }
+
     return items;
 }
 
@@ -72,6 +114,70 @@ function filterItemsBySubject(subject: string, items: DesktopItem[]): DesktopIte
  */
 function filterByFileType(items: DesktopItem[], fileType: string): DesktopItem[] {
     return items.filter(item => item.type === fileType);
+}
+
+/**
+ * Filter items by tag
+ */
+function filterByTag(items: DesktopItem[], tagName: string, tags: TagItem[]): DesktopItem[] {
+    const tag = tags.find(t => t.name === tagName);
+    if (!tag) return [];
+
+    return items.filter(item => tag.items.includes(item.label));
+}
+
+/**
+ * Filter items by pattern matching (supports * and ?)
+ */
+function filterByPattern(items: DesktopItem[], pattern: string): DesktopItem[] {
+    // Convert pattern to regex
+    const regexPattern = pattern
+        .replace(/\./g, '\\.')  // Escape dots
+        .replace(/\*/g, '.*')   // * becomes .*
+        .replace(/\?/g, '.');   // ? becomes .
+
+    const regex = new RegExp(`^${regexPattern}$`, 'i'); // Case insensitive
+
+    return items.filter(item => regex.test(item.label));
+}
+
+/**
+ * Filter items by time
+ */
+function filterByTime(
+    items: DesktopItem[],
+    timeField: 'lastAccessed' | 'lastModified' | 'createdTime',
+    value: number,
+    unit: 'day' | 'month' | 'year'
+): DesktopItem[] {
+    const now = new Date();
+    const threshold = calculateThreshold(now, value, unit);
+
+    return items.filter(item => {
+        const itemDate = new Date(item[timeField] || '');
+        return itemDate >= threshold;
+    });
+}
+
+/**
+ * Calculate threshold date for time filtering
+ */
+function calculateThreshold(now: Date, value: number, unit: 'day' | 'month' | 'year'): Date {
+    const threshold = new Date(now);
+
+    switch (unit) {
+        case 'day':
+            threshold.setDate(threshold.getDate() - value);
+            break;
+        case 'month':
+            threshold.setMonth(threshold.getMonth() - value);
+            break;
+        case 'year':
+            threshold.setFullYear(threshold.getFullYear() - value);
+            break;
+    }
+
+    return threshold;
 }
 
 /**
@@ -84,7 +190,6 @@ function sortItems(
     allItems: DesktopItem[],
     sortBy: SortField
 ): RuleExecutionResult {
-    // Sort the target items based on the specified field
     const sortedTargetItems = [...targetItems].sort((a, b) => {
         switch (sortBy) {
             case 'name':
@@ -94,7 +199,7 @@ function sortItems(
             case 'lastModified': {
                 const dateA = new Date(a[sortBy] || 0).getTime();
                 const dateB = new Date(b[sortBy] || 0).getTime();
-                return dateB - dateA; // Newest first
+                return dateB - dateA;
             }
 
             case 'type':
@@ -103,7 +208,7 @@ function sortItems(
             case 'fileSize': {
                 const sizeA = a.fileSize || 0;
                 const sizeB = b.fileSize || 0;
-                return sizeB - sizeA; // Largest first
+                return sizeB - sizeA;
             }
 
             default:
@@ -111,15 +216,12 @@ function sortItems(
         }
     });
 
-    // Grid configuration
     const startX = 20;
     const startY = 20;
     const gridSpacingX = 90;
     const gridSpacingY = 90;
     const iconsPerRow = 10;
 
-    // Find the next available grid position
-    // Check all existing items to find the lowest unoccupied spot
     const occupiedPositions = new Set(
         allItems
             .filter(item => !targetItems.some(target => target.id === item.id))
@@ -129,7 +231,6 @@ function sortItems(
     let currentRow = 0;
     let currentCol = 0;
 
-    // Find first available position
     function findNextAvailablePosition(): { row: number; col: number } {
         while (true) {
             const x = startX + currentCol * gridSpacingX;
@@ -140,7 +241,6 @@ function sortItems(
                 return { row: currentRow, col: currentCol };
             }
 
-            // Move to next grid position
             currentCol++;
             if (currentCol >= iconsPerRow) {
                 currentCol = 0;
@@ -149,16 +249,13 @@ function sortItems(
         }
     }
 
-    // Arrange sorted items starting from the first available position
     const arrangedTargetItems = sortedTargetItems.map((item) => {
         const { row, col } = findNextAvailablePosition();
         const x = startX + col * gridSpacingX;
         const y = startY + row * gridSpacingY;
 
-        // Mark this position as occupied
         occupiedPositions.add(`${x},${y}`);
 
-        // Move to next position for next item
         currentCol++;
         if (currentCol >= iconsPerRow) {
             currentCol = 0;
@@ -172,14 +269,12 @@ function sortItems(
         };
     });
 
-    // Keep non-target items in their original positions
     const nonTargetItems = allItems.filter(
         item => !targetItems.some(target => target.id === item.id)
     );
 
     const resultItems = [...arrangedTargetItems, ...nonTargetItems];
 
-    // Generate description based on sort field
     const descriptions: Record<SortField, string> = {
         name: 'alphabetically by name',
         lastAccessed: 'by last accessed time',
@@ -195,19 +290,17 @@ function sortItems(
 }
 
 /**
- * Put files into a folder (creates folder if it doesn't exist, hides files)
+ * Put files into a folder
  */
 function putInFolder(
     targetItems: DesktopItem[],
     allItems: DesktopItem[],
     folderName: string
 ): RuleExecutionResult {
-    // Check if folder already exists
     let folderItem = allItems.find(
         item => item.type === 'folder' && item.label === folderName
     );
 
-    // If folder doesn't exist, create it
     if (!folderItem) {
         folderItem = {
             id: `folder-${Date.now()}`,
@@ -223,12 +316,10 @@ function putInFolder(
         };
     }
 
-    // Remove target items from the desktop (hide them)
     const nonTargetItems = allItems.filter(
         item => !targetItems.some(target => target.id === item.id)
     );
 
-    // Ensure folder is in the result
     const folderExists = nonTargetItems.some(item => item.id === folderItem.id);
     const resultItems = folderExists ? nonTargetItems : [...nonTargetItems, folderItem];
 
@@ -240,7 +331,6 @@ function putInFolder(
 
 /**
  * Parse a rule text to extract subject and action
- * Example: "All files + Sort by name" => { subject: "All files", action: "Sort by name" }
  */
 export function parseRuleText(ruleText: string): { subject: string; action: string } | null {
     const parts = ruleText.split('+').map(p => p.trim());

@@ -4,7 +4,7 @@ import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { HierarchyNode, SimpleRule } from './OrganizerTypes';
-import { subjectOptions, actionOptions } from './OrganizerConstants';
+import { subjectOptions as defaultSubjectOptions, actionOptions } from './OrganizerConstants';
 
 // Hierarchy List Component
 function HierarchyList({
@@ -183,6 +183,7 @@ type RulesPanelProps = {
     selectedSubject?: string;
     selectedAction?: string;
     folderName?: string;
+    subjectOptions?: HierarchyNode[];  // Dynamic subject options
     openRuleMenu: string | null;
     ruleMenuRef: React.RefObject<HTMLDivElement | null>;
     onSelectSubject: (value: string) => void;
@@ -203,6 +204,7 @@ export function RulesPanel({
     selectedSubject,
     selectedAction,
     folderName,
+    subjectOptions,
     openRuleMenu,
     ruleMenuRef,
     onSelectSubject,
@@ -229,7 +231,7 @@ export function RulesPanel({
                     title="Subject"
                     placeholder="Subject"
                     selected={selectedSubject}
-                    options={subjectOptions}
+                    options={subjectOptions || defaultSubjectOptions}
                     onSelect={onSelectSubject}
                     align="left"
                 />

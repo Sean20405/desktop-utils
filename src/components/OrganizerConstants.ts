@@ -50,3 +50,41 @@ export const actionOptions: HierarchyNode[] = [
     { label: "Delete" },
     { label: "zip" },
 ];
+
+/**
+ * Generate dynamic subject options based on actual tags
+ */
+export function getSubjectOptionsWithTags(tags: Array<{ name: string }>): HierarchyNode[] {
+    return [
+        { label: "All files" },
+        {
+            label: "Tags",
+            children: tags.length > 0
+                ? tags.map(tag => ({ label: tag.name }))
+                : [{ label: "LLM generate" }],
+        },
+        {
+            label: "Time",
+            children: [
+                {
+                    label: "Last Accessed",
+                    children: [{ label: "within [n] [day|month|year]" }],
+                },
+                { label: "Create Time" },
+                { label: "Last Modified" },
+            ],
+        },
+        {
+            label: "File Type",
+            children: [
+                { label: "app" },
+                { label: "folder" },
+                { label: "settings" },
+                { label: "file" },
+                { label: "image" },
+            ],
+        },
+        { label: "f-string (e.g. hw*_report.pdf)" },
+    ];
+}
+

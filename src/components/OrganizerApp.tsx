@@ -6,11 +6,13 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { generateTagsFromFiles, assignFilesToTags, hasGeminiApiKey, setGeminiApiKey } from "../utils/geminiApi";
 import { executeRule, parseRuleText } from "../utils/ruleEngine";
+import type { RuleContext } from "../utils/ruleEngine";
 import type { SimpleRule, HistoryEntry } from './OrganizerTypes';
 import type { DesktopItem } from '../context/DesktopContext';
 import { HistoryPanel } from './OrganizerHistory';
 import { TagsPanel } from './OrganizerTag';
 import { RulesPanel, SavedRulesSection } from './OrganizerRule';
+import { getSubjectOptionsWithTags } from './OrganizerConstants';
 
 
 // Draggable Preview File Component
@@ -306,7 +308,11 @@ export function OrganizerApp() {
     for (const rule of rules) {
       const parsed = parseRuleText(rule.text);
       if (parsed) {
-        const result = executeRule(parsed.subject, parsed.action, resultItems);
+        const context: RuleContext = {
+          items: resultItems,
+          tags: tags,
+        };
+        const result = executeRule(parsed.subject, parsed.action, context);
         if (result) {
           resultItems = result.items;
           success = true;
@@ -336,7 +342,11 @@ export function OrganizerApp() {
     for (const rule of rules) {
       const parsed = parseRuleText(rule.text);
       if (parsed) {
-        const result = executeRule(parsed.subject, parsed.action, resultItems);
+        const context: RuleContext = {
+          items: resultItems,
+          tags: tags,
+        };
+        const result = executeRule(parsed.subject, parsed.action, context);
         if (result) {
           resultItems = result.items;
           descriptions.push(result.description);
@@ -682,6 +692,11 @@ export function OrganizerApp() {
     }
   };
 
+  // Generate dynamic subject options based on actual tags
+  const dynamicSubjectOptions = useMemo(() => {
+    return getSubjectOptionsWithTags(tags);
+  }, [tags]);
+
   // Use RulesPanel component instead of inline JSX
   const ruleList = (
     <RulesPanel
@@ -689,6 +704,7 @@ export function OrganizerApp() {
       selectedSubject={subjectSelection}
       selectedAction={actionSelection}
       folderName={folderName}
+      subjectOptions={dynamicSubjectOptions}
       openRuleMenu={openRuleMenu}
       ruleMenuRef={ruleMenuRef}
       onSelectSubject={setSubjectSelection}
@@ -702,7 +718,8 @@ export function OrganizerApp() {
       onToggleMenu={(id) => setOpenRuleMenu(prev => prev === id ? null : id)}
       onPreview={handlePreview}
       onApply={handleApply}
-    />
+    /
+    >
   );
 
   useEffect(() => {
