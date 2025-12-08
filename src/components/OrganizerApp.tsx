@@ -4,7 +4,7 @@ import { useDesktop } from "../context/DesktopContext";
 import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { generateTagsFromFiles, assignFilesToTags } from "../utils/geminiApi";
+import { generateTagsFromFiles, assignFilesToTags, hasGeminiApiKey, setGeminiApiKey } from "../utils/geminiApi";
 
 type HierarchyNode = { label: string; children?: HierarchyNode[] };
 
@@ -460,6 +460,9 @@ export function OrganizerApp() {
   const [editingName, setEditingName] = useState("");
   const [isGeneratingTags, setIsGeneratingTags] = useState(false);
   const [isAssigningTags, setIsAssigningTags] = useState(false);
+  const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [pendingAction, setPendingAction] = useState<"generate" | "assign" | null>(null);
   const { items } = useDesktop();
 
   const toggleHistoryStar = (id: string) => {
@@ -576,9 +579,40 @@ export function OrganizerApp() {
     }
   };
 
+  // 處理 API Key 輸入
+  const handleApiKeySubmit = () => {
+    if (!apiKeyInput.trim()) {
+      alert('請輸入 Gemini API Key');
+      return;
+    }
+    const apiKey = apiKeyInput.trim();
+    setGeminiApiKey(apiKey);
+    setShowApiKeyDialog(false);
+    setApiKeyInput("");
+    
+    // 執行待處理的操作（使用 setTimeout 確保 sessionStorage 已更新）
+    const action = pendingAction;
+    setPendingAction(null);
+    
+    setTimeout(() => {
+      if (action === "generate") {
+        handleAIGenerateTags();
+      } else if (action === "assign") {
+        handleAIAssignTags();
+      }
+    }, 0);
+  };
+
   // AI Generate Tag 功能
   const handleAIGenerateTags = async () => {
     if (isGeneratingTags) return;
+    
+    // 檢查是否有 API Key
+    if (!hasGeminiApiKey()) {
+      setPendingAction("generate");
+      setShowApiKeyDialog(true);
+      return;
+    }
     
     setIsGeneratingTags(true);
     try {
@@ -632,6 +666,13 @@ export function OrganizerApp() {
   // AI Assign Tag 功能
   const handleAIAssignTags = async () => {
     if (isAssigningTags) return;
+
+    // 檢查是否有 API Key
+    if (!hasGeminiApiKey()) {
+      setPendingAction("assign");
+      setShowApiKeyDialog(true);
+      return;
+    }
 
     // 排除 "ALL" 標籤
     const existingTags = tags.filter(t => t.id !== 'all');
@@ -1002,6 +1043,78 @@ export function OrganizerApp() {
           </div>
         </div>
       </div>
+
+      {/* API Key 輸入對話框 */}
+      {showApiKeyDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">輸入 Gemini API Key</h2>
+              <button
+                onClick={() => {
+                  setShowApiKeyDialog(false);
+                  setApiKeyInput("");
+                  setPendingAction(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              要使用 AI 功能，請輸入您的 Gemini API Key。此 Key 將僅存儲在本次會話中，刷新頁面後會清除。
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Gemini API Key
+              </label>
+              <input
+                type="password"
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleApiKeySubmit();
+                  }
+                }}
+                placeholder="請輸入您的 Gemini API Key"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowApiKeyDialog(false);
+                  setApiKeyInput("");
+                  setPendingAction(null);
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleApiKeySubmit}
+                className="flex-1 px-4 py-2 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors"
+              >
+                確認
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-4">
+              提示：您可以在{" "}
+              <a
+                href="https://makersuite.google.com/app/apikey"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-orange-400 hover:text-orange-500 underline"
+              >
+                Google AI Studio
+              </a>{" "}
+              獲取 API Key
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

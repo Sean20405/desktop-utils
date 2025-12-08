@@ -1,24 +1,38 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// 初始化 Gemini API
-// 注意：API Key 應該從環境變數讀取，這裡先使用一個配置
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
-
-// 調試信息：檢查環境變數是否正確讀取
-if (import.meta.env.DEV) {
-  console.log('🔍 環境變數檢查:', {
-    hasKey: !!API_KEY,
-    keyLength: API_KEY.length,
-    keyPrefix: API_KEY ? API_KEY.substring(0, 10) + '...' : 'N/A',
-    allEnvKeys: Object.keys(import.meta.env).filter(k => k.includes('GEMINI'))
-  });
+// 獲取 API Key 的函數（優先使用 sessionStorage，其次使用環境變數）
+export function getGeminiApiKey(): string {
+  // 優先從 sessionStorage 讀取（用戶輸入的）
+  const sessionKey = typeof window !== 'undefined' ? sessionStorage.getItem('gemini_api_key') : null;
+  if (sessionKey) {
+    return sessionKey;
+  }
+  
+  // 其次從環境變數讀取
+  const envKey = import.meta.env.VITE_GEMINI_API_KEY || '';
+  return envKey;
 }
 
-if (!API_KEY) {
-  console.warn('VITE_GEMINI_API_KEY 未設置，請在 .env 文件中設置 API Key');
+// 檢查是否有可用的 API Key
+export function hasGeminiApiKey(): boolean {
+  return !!getGeminiApiKey();
 }
 
-const genAI = API_KEY ? new GoogleGenerativeAI(API_KEY) : null;
+// 保存 API Key 到 sessionStorage
+export function setGeminiApiKey(key: string): void {
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('gemini_api_key', key);
+  }
+}
+
+// 獲取 GoogleGenerativeAI 實例（動態獲取 API key）
+function getGenAI(): GoogleGenerativeAI | null {
+  const apiKey = getGeminiApiKey();
+  if (!apiKey) {
+    return null;
+  }
+  return new GoogleGenerativeAI(apiKey);
+}
 
 export interface DesktopFile {
   id: string;
@@ -41,8 +55,9 @@ export interface TagAssignment {
  * 使用 Gemini API 分析桌面檔案並生成標籤
  */
 export async function generateTagsFromFiles(files: DesktopFile[]): Promise<Tag[]> {
+  const genAI = getGenAI();
   if (!genAI) {
-    throw new Error('Gemini API Key 未設置');
+    throw new Error('Gemini API Key 未設置，請先輸入您的 Gemini API Key');
   }
 
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
@@ -110,8 +125,9 @@ export async function assignFilesToTags(
   files: DesktopFile[],
   existingTags: { name: string; items: string[] }[]
 ): Promise<TagAssignment[]> {
+  const genAI = getGenAI();
   if (!genAI) {
-    throw new Error('Gemini API Key 未設置');
+    throw new Error('Gemini API Key 未設置，請先輸入您的 Gemini API Key');
   }
 
   const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
