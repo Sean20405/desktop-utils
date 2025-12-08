@@ -12,7 +12,7 @@ import type { DesktopItem } from '../context/DesktopContext';
 import { HistoryPanel } from './OrganizerHistory';
 import { TagsPanel } from './OrganizerTag';
 import { RulesPanel, SavedRulesSection } from './OrganizerRule';
-import { getSubjectOptionsWithTags } from './OrganizerConstants';
+import { getSubjectOptionsWithTags, getActionOptionsWithFolders } from './OrganizerConstants';
 import { getAssetUrl } from "../utils/assetUtils";
 
 
@@ -76,7 +76,7 @@ function DraggablePreviewFile({
   );
 }
 
-function DesktopPreview({ previewItems }: { previewItems: DesktopItem[] }) {
+function DesktopPreview({ previewItems, isPreviewMode }: { previewItems: DesktopItem[]; isPreviewMode?: boolean }) {
   const { background } = useDesktop();
   const containerRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
@@ -134,6 +134,11 @@ function DesktopPreview({ previewItems }: { previewItems: DesktopItem[] }) {
         {previewItems.map((item) => (
           <DraggablePreviewFile key={item.id} item={item} scale={scale} />
         ))}
+        {isPreviewMode && (
+          <div className="absolute bottom-4 right-4 bg-blue-500 text-white px-3 py-1.5 rounded-lg shadow-lg text-sm font-medium">
+            Preview Mode
+          </div>
+        )}
       </div>
     </div>
   );
@@ -179,7 +184,21 @@ export function OrganizerApp() {
   const ruleMenuRef = useRef<HTMLDivElement | null>(null);
   const [subjectSelection, setSubjectSelection] = useState<string>("");
   const [actionSelection, setActionSelection] = useState<string>("");
-  const [folderName, setFolderName] = useState<string>("");
+  const [patternInput, setPatternInput] = useState<string>("");
+  const [timeValue, setTimeValue] = useState<string>("");
+  const [timeUnit, setTimeUnit] = useState<'day' | 'month' | 'year'>('day');
+  // Load folders from localStorage or start with empty array
+  const [folders, setFolders] = useState<string[]>(() => {
+    const savedFolders = localStorage.getItem('organizerFolders');
+    if (savedFolders) {
+      try {
+        return JSON.parse(savedFolders);
+      } catch (e) {
+        console.error('Failed to parse saved folders:', e);
+      }
+    }
+    return [];
+  });
   // Load history from localStorage or start with empty array
   const [historyItems, setHistoryItems] = useState<HistoryEntry[]>(() => {
     const savedHistory = localStorage.getItem('organizerHistory');
@@ -244,6 +263,11 @@ export function OrganizerApp() {
     localStorage.setItem('organizerHistory', JSON.stringify(historyItems));
   }, [historyItems]);
 
+  // Save folders to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('organizerFolders', JSON.stringify(folders));
+  }, [folders]);
+
   const toggleHistoryStar = (id: string) => {
     setHistoryItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, starred: !item.starred } : item))
@@ -257,21 +281,55 @@ export function OrganizerApp() {
   const handleAddRule = () => {
     if (!subjectSelection || !actionSelection) return;
 
-    // Build the complete action text with folder name if needed
-    let finalAction = actionSelection;
-    if (actionSelection === 'Put in "__" folder named') {
-      if (!folderName.trim()) {
-        alert("請輸入資料夾名稱");
+    // Build the complete subject text
+    let finalSubject = subjectSelection;
+    if (subjectSelection === 'f-string') {
+      if (!patternInput.trim()) {
+        alert("請輸入 f-string pattern");
         return;
       }
-      finalAction = `Put in "${folderName.trim()}" folder`;
+      finalSubject = `f-string: ${patternInput.trim()}`;
+    } else if (subjectSelection.startsWith('Time > ')) {
+      const timeType = subjectSelection.replace('Time > ', '');
+      if (!timeValue.trim()) {
+        alert("請輸入時間範圍");
+        return;
+      }
+      finalSubject = `Time > ${timeType} within ${timeValue} ${timeUnit}`;
     }
 
-    const text = `${subjectSelection} + ${finalAction}`;
+    // Build the complete action text
+    let finalAction = actionSelection;
+    if (actionSelection.startsWith('Put in folder > ')) {
+      const folderPart = actionSelection.replace('Put in folder > ', '');
+
+      // Handle "New folder..." option
+      if (folderPart === 'New folder...') {
+        const newFolderName = window.prompt('請輸入新資料夾名稱:');
+        if (!newFolderName || !newFolderName.trim()) {
+          return; // User cancelled or entered empty name
+        }
+        const trimmedName = newFolderName.trim();
+
+        // Add to folders list if not already exists
+        if (!folders.includes(trimmedName)) {
+          setFolders((prev) => [...prev, trimmedName]);
+        }
+
+        finalAction = `Put in "${trimmedName}" folder`;
+      } else {
+        // Use selected folder from the list
+        finalAction = `Put in "${folderPart}" folder`;
+      }
+    }
+
+    const text = `${finalSubject} + ${finalAction}`;
     setRules((prev) => [...prev, { id: `rule-${Date.now()}`, text }]);
     setSubjectSelection("");
     setActionSelection("");
-    setFolderName("");
+    setPatternInput("");
+    setTimeValue("");
+    setTimeUnit('day');
   };
 
   const handleRemoveRule = (id: string) => {
@@ -312,8 +370,45 @@ export function OrganizerApp() {
     setSavedRules((prev) => prev.filter((rule) => rule.id !== id));
   };
 
+  const handleRenameFolder = (oldName: string, newName: string) => {
+    if (oldName === newName || !newName.trim()) return;
+    const trimmedNewName = newName.trim();
+
+    // Check for duplicates
+    if (folders.includes(trimmedNewName) && oldName !== trimmedNewName) {
+      alert('此資料夾名稱已存在');
+      return;
+    }
+
+    setFolders((prev) => prev.map(f => f === oldName ? trimmedNewName : f));
+  };
+
+  const handleAddFolder = (folderName: string) => {
+    if (!folderName.trim()) return;
+    const trimmedName = folderName.trim();
+
+    // Check for duplicates
+    if (folders.includes(trimmedName)) {
+      alert('此資料夾名稱已存在');
+      return;
+    }
+
+    setFolders((prev) => [...prev, trimmedName]);
+  };
+
+  const handleDeleteFolder = (folderName: string) => {
+    setFolders((prev) => prev.filter(f => f !== folderName));
+  };
+
   // Handle Preview
   const handlePreview = () => {
+    // If already in preview mode, toggle off
+    if (isPreviewMode) {
+      setIsPreviewMode(false);
+      setPreviewItems(items);
+      return;
+    }
+
     if (rules.length === 0) {
       alert('請先添加至少一個規則');
       return;
@@ -376,7 +471,7 @@ export function OrganizerApp() {
       // Apply to actual desktop
       setItems(resultItems);
       setPreviewItems(resultItems);
-      setIsPreviewMode(false);
+      setIsPreviewMode(false);  // Exit preview mode after applying
 
       // Add to history
       const now = new Date();
@@ -715,19 +810,27 @@ export function OrganizerApp() {
     return getSubjectOptionsWithTags(tags);
   }, [tags]);
 
+  // Generate dynamic action options based on user folders
+  const dynamicActionOptions = useMemo(() => {
+    return getActionOptionsWithFolders(folders);
+  }, [folders]);
+
   // Use RulesPanel component instead of inline JSX
   const ruleList = (
     <RulesPanel
       rules={rules}
       selectedSubject={subjectSelection}
       selectedAction={actionSelection}
-      folderName={folderName}
       subjectOptions={dynamicSubjectOptions}
+      actionOptions={dynamicActionOptions}
+      isPreviewMode={isPreviewMode}
       openRuleMenu={openRuleMenu}
       ruleMenuRef={ruleMenuRef}
       onSelectSubject={setSubjectSelection}
       onSelectAction={setActionSelection}
-      onFolderNameChange={setFolderName}
+      onRenameFolder={handleRenameFolder}
+      onAddFolder={handleAddFolder}
+      onDeleteFolder={handleDeleteFolder}
       onAddRule={handleAddRule}
       onSaveRule={handleSaveRule}
       onEditRule={handleEditRule}
@@ -736,8 +839,7 @@ export function OrganizerApp() {
       onToggleMenu={(id) => setOpenRuleMenu(prev => prev === id ? null : id)}
       onPreview={handlePreview}
       onApply={handleApply}
-    /
-    >
+    />
   );
 
   useEffect(() => {
@@ -760,7 +862,7 @@ export function OrganizerApp() {
         <div className="flex flex-1 gap-4 min-h-0">
           <div className="flex-[1.2] flex flex-col gap-3 min-w-[520px]">
             <div className="h-[360px] rounded-2xl overflow-hidden shadow-inner border border-gray-500 bg-gradient-to-b from-gray-800 to-gray-700">
-              <DesktopPreview previewItems={previewItems} />
+              <DesktopPreview previewItems={previewItems} isPreviewMode={isPreviewMode} />
             </div>
 
             <SavedRulesSection

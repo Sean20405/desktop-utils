@@ -9,10 +9,7 @@ export const subjectOptions: HierarchyNode[] = [
     {
         label: "Time",
         children: [
-            {
-                label: "Last Accessed",
-                children: [{ label: "within [n] [day|month|year]" }],
-            },
+            { label: "Last Accessed" },
             { label: "Create Time" },
             { label: "Last Modified" },
         ],
@@ -27,29 +24,54 @@ export const subjectOptions: HierarchyNode[] = [
             { label: "image" },
         ],
     },
-    { label: "f-string (e.g. hw*_report.pdf)" },
+    { label: "f-string" },
 ];
 
 export const actionOptions: HierarchyNode[] = [
-    { label: "Sort by name" },
-    { label: "Sort by last accessed time" },
-    { label: "Sort by last modified time" },
-    { label: "Sort by type" },
-    { label: "Sort by file size" },
-    { label: 'Put in "__" folder named' },
     {
-        label: "Sort by __ starting {x,y} in __ direction (push away obstacles)",
+        label: "Sort",
         children: [
-            { label: "alphabetic order" },
-            { label: "last accessed time" },
-            { label: "last modified time" },
-            { label: "type" },
-            { label: "file size" },
+            { label: "Sort by name" },
+            { label: "Sort by last accessed time" },
+            { label: "Sort by last modified time" },
+            { label: "Sort by type" },
+            { label: "Sort by file size" },
         ],
     },
+    { label: "Put in folder" },
     { label: "Delete" },
     { label: "zip" },
 ];
+
+/**
+ * Generate dynamic action options based on user-created folders
+ */
+export function getActionOptionsWithFolders(folders: string[]): HierarchyNode[] {
+    // Create children for "Put in folder": existing folders + input field
+    const putInFolderChildren: HierarchyNode[] = [
+        ...folders.map(folder => ({ label: folder })),
+        { label: '__INPUT__' }, // Special marker for input field rendering
+    ];
+
+    return [
+        {
+            label: "Sort",
+            children: [
+                { label: "Sort by name" },
+                { label: "Sort by last accessed time" },
+                { label: "Sort by last modified time" },
+                { label: "Sort by type" },
+                { label: "Sort by file size" },
+            ],
+        },
+        {
+            label: "Put in folder",
+            children: putInFolderChildren,
+        },
+        { label: "Delete" },
+        { label: "zip" },
+    ];
+}
 
 /**
  * Generate dynamic subject options based on actual tags
@@ -66,10 +88,7 @@ export function getSubjectOptionsWithTags(tags: Array<{ name: string }>): Hierar
         {
             label: "Time",
             children: [
-                {
-                    label: "Last Accessed",
-                    children: [{ label: "within [n] [day|month|year]" }],
-                },
+                { label: "Last Accessed" },
                 { label: "Create Time" },
                 { label: "Last Modified" },
             ],
@@ -84,7 +103,6 @@ export function getSubjectOptionsWithTags(tags: Array<{ name: string }>): Hierar
                 { label: "image" },
             ],
         },
-        { label: "f-string (e.g. hw*_report.pdf)" },
+        { label: "f-string" },
     ];
 }
-

@@ -1,45 +1,202 @@
 import { useState, useEffect, useRef } from "react";
-import { ChevronDown, GripVertical, MoreVertical, Plus } from "lucide-react";
+import { ChevronDown, GripVertical, MoreVertical, Plus, X } from "lucide-react";
 import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import type { HierarchyNode, SimpleRule } from './OrganizerTypes';
-import { subjectOptions as defaultSubjectOptions, actionOptions } from './OrganizerConstants';
+import { subjectOptions as defaultSubjectOptions, actionOptions as defaultActionOptions } from './OrganizerConstants';
 
 // Hierarchy List Component
 function HierarchyList({
     nodes,
     path,
     onSelect,
+    onRename,
+    isEditableFolder,
+    onAddFolder,
+    onDeleteFolder,
     level = 0,
 }: {
     nodes: HierarchyNode[];
     path?: string;
     onSelect: (value: string) => void;
+    onRename?: (oldValue: string, newValue: string) => void;
+    isEditableFolder?: (path: string, label: string) => boolean;
+    onAddFolder?: (folderName: string) => void;
+    onDeleteFolder?: (folderName: string) => void;
     level?: number;
 }) {
+    const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
+    const [editingNode, setEditingNode] = useState<string | null>(null);
+    const [editingValue, setEditingValue] = useState<string>("");
+    const [newFolderName, setNewFolderName] = useState<string>("");
+
+    const toggleExpand = (nodeKey: string) => {
+        setExpandedNodes(prev => {
+            const next = new Set(prev);
+            if (next.has(nodeKey)) {
+                next.delete(nodeKey);
+            } else {
+                next.add(nodeKey);
+            }
+            return next;
+        });
+    };
+
+    const startEditing = (nodeKey: string, label: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setEditingNode(nodeKey);
+        setEditingValue(label);
+    };
+
+    const saveEditing = (currentValue: string) => {
+        if (editingValue.trim() && editingValue !== currentValue.split(' > ').pop()) {
+            const oldLabel = currentValue.split(' > ').pop() || currentValue;
+            onRename?.(oldLabel, editingValue.trim());
+        }
+        setEditingNode(null);
+        setEditingValue("");
+    };
+
+    const cancelEditing = () => {
+        setEditingNode(null);
+        setEditingValue("");
+    };
+
+    const handleAddNewFolder = () => {
+        if (newFolderName.trim() && onAddFolder) {
+            onAddFolder(newFolderName.trim());
+            setNewFolderName("");
+        }
+    };
+
     return (
         <div className="space-y-1">
             {nodes.map((node, idx) => {
                 const currentValue = path ? `${path} > ${node.label}` : node.label;
                 const hasChildren = !!node.children?.length;
+                const nodeKey = `${currentValue}-${idx}`;
+                const isExpanded = expandedNodes.has(nodeKey);
+                const isEditing = editingNode === nodeKey;
+                const canEdit = !hasChildren && isEditableFolder?.(path || "", node.label);
+
+                // Special handling for input field node
+                const isInputNode = node.label === '__INPUT__';
+
+                // Skip rendering the special __INPUT__ marker as a regular item
+                if (isInputNode) {
+                    return (
+                        <div key={nodeKey} className="pt-2 border-t border-gray-200" style={{ paddingLeft: level ? 6 : 0 }}>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="新資料夾名稱..."
+                                    value={newFolderName}
+                                    onChange={(e) => setNewFolderName(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            handleAddNewFolder();
+                                        }
+                                    }}
+                                    className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                                <button
+                                    onClick={handleAddNewFolder}
+                                    className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 active:scale-95 transition-all"
+                                    type="button"
+                                >
+                                    +
+                                </button>
+                            </div>
+                        </div>
+                    );
+                }
 
                 return (
-                    <div key={`${currentValue}-${idx}`} className="flex flex-col gap-1" style={{ paddingLeft: level ? 6 : 0 }}>
-                        <button
-                            onClick={() => onSelect(currentValue)}
-                            className="flex items-start gap-2 text-left px-3 py-1.5 rounded-md hover:bg-gray-50 transition-colors"
-                        >
-                            <span className="text-gray-400 leading-6">•</span>
-                            <span
-                                className={`text-sm ${level === 0 ? "text-gray-900 font-semibold" : "text-gray-800"} leading-6 whitespace-normal break-words`}
-                            >
-                                {node.label}
-                            </span>
-                        </button>
-                        {hasChildren && (
-                            <div className="ml-5 pl-3 border-l border-dashed border-gray-200">
-                                <HierarchyList nodes={node.children!} path={currentValue} onSelect={onSelect} level={level + 1} />
+                    <div key={nodeKey} className="flex flex-col gap-0.5" style={{ paddingLeft: level ? 6 : 0 }}>
+                        <div className="flex items-center gap-1">
+                            {hasChildren ? (
+                                <button
+                                    onClick={() => toggleExpand(nodeKey)}
+                                    className="p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
+                                    title={isExpanded ? "Collapse" : "Expand"}
+                                >
+                                    {isExpanded ? (
+                                        <ChevronDown size={16} className="text-gray-600 transition-transform" />
+                                    ) : (
+                                        <ChevronDown size={16} className="text-gray-600 transition-transform -rotate-90" />
+                                    )}
+                                </button>
+                            ) : (
+                                <span className="text-gray-400 leading-6 ml-1 flex-shrink-0">•</span>
+                            )}
+                            {hasChildren ? (
+                                <span
+                                    className={`flex-1 text-left px-2 py-1 text-sm ${level === 0 ? "text-gray-900 font-semibold" : "text-gray-800"} leading-6 whitespace-normal break-words`}
+                                >
+                                    {node.label}
+                                </span>
+                            ) : canEdit && isEditing ? (
+                                <input
+                                    type="text"
+                                    value={editingValue}
+                                    onChange={(e) => setEditingValue(e.target.value)}
+                                    onBlur={() => saveEditing(currentValue)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            saveEditing(currentValue);
+                                        } else if (e.key === 'Escape') {
+                                            cancelEditing();
+                                        }
+                                    }}
+                                    autoFocus
+                                    className="flex-1 px-2 py-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            ) : (
+                                <div
+                                    className={`flex-1 flex items-center px-2 py-1 rounded-md ${!canEdit ? 'hover:bg-gray-50 cursor-pointer' : ''} transition-colors`}
+                                >
+                                    <span
+                                        onClick={(e) => {
+                                            if (canEdit) {
+                                                startEditing(nodeKey, node.label, e);
+                                            } else {
+                                                onSelect(currentValue);
+                                            }
+                                        }}
+                                        className={`text-sm ${level === 0 ? "text-gray-900 font-semibold" : "text-gray-800"} leading-6 whitespace-normal break-words ${canEdit ? 'cursor-text hover:text-blue-600' : 'cursor-pointer'} flex-1`}
+                                    >
+                                        {node.label}
+                                    </span>
+                                    {path === "Put in folder" && onDeleteFolder && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onDeleteFolder(node.label);
+                                            }}
+                                            className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                                            title="刪除資料夾"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                        {hasChildren && isExpanded && (
+                            <div className="ml-5 pl-3 border-l border-dashed border-gray-200 animate-in slide-in-from-top-1 duration-200">
+                                <HierarchyList
+                                    nodes={node.children!}
+                                    path={currentValue}
+                                    onSelect={onSelect}
+                                    onRename={onRename}
+                                    isEditableFolder={isEditableFolder}
+                                    onAddFolder={onAddFolder}
+                                    onDeleteFolder={onDeleteFolder}
+                                    level={level + 1}
+                                />
                             </div>
                         )}
                     </div>
@@ -56,6 +213,10 @@ function HierarchicalDropdown({
     selected,
     options,
     onSelect,
+    onRename,
+    isEditableFolder,
+    onAddFolder,
+    onDeleteFolder,
     align = "left",
 }: {
     title: string;
@@ -63,6 +224,10 @@ function HierarchicalDropdown({
     selected?: string;
     options: HierarchyNode[];
     onSelect: (value: string) => void;
+    onRename?: (oldValue: string, newValue: string) => void;
+    isEditableFolder?: (path: string, label: string) => boolean;
+    onAddFolder?: (folderName: string) => void;
+    onDeleteFolder?: (folderName: string) => void;
     align?: "left" | "right";
 }) {
     const [open, setOpen] = useState(false);
@@ -101,6 +266,10 @@ function HierarchicalDropdown({
                                 onSelect(value);
                                 setOpen(false);
                             }}
+                            onRename={onRename}
+                            isEditableFolder={isEditableFolder}
+                            onAddFolder={onAddFolder}
+                            onDeleteFolder={onDeleteFolder}
                         />
                     </div>
                 </div>
@@ -182,13 +351,16 @@ type RulesPanelProps = {
     rules: SimpleRule[];
     selectedSubject?: string;
     selectedAction?: string;
-    folderName?: string;
     subjectOptions?: HierarchyNode[];  // Dynamic subject options
+    actionOptions?: HierarchyNode[];  // Dynamic action options
+    isPreviewMode?: boolean;  // Preview mode indicator
     openRuleMenu: string | null;
     ruleMenuRef: React.RefObject<HTMLDivElement | null>;
     onSelectSubject: (value: string) => void;
     onSelectAction: (value: string) => void;
-    onFolderNameChange: (name: string) => void;
+    onRenameFolder?: (oldName: string, newName: string) => void;
+    onAddFolder?: (folderName: string) => void;
+    onDeleteFolder?: (folderName: string) => void;
     onAddRule: () => void;
     onSaveRule: () => void;
     onEditRule: (id: string) => void;
@@ -203,13 +375,16 @@ export function RulesPanel({
     rules,
     selectedSubject,
     selectedAction,
-    folderName,
     subjectOptions,
+    actionOptions,
+    isPreviewMode,
     openRuleMenu,
     ruleMenuRef,
     onSelectSubject,
     onSelectAction,
-    onFolderNameChange,
+    onRenameFolder,
+    onAddFolder,
+    onDeleteFolder,
     onAddRule,
     onSaveRule,
     onEditRule,
@@ -226,39 +401,35 @@ export function RulesPanel({
                 <div className="text-xs uppercase tracking-wide text-gray-500">(Executed in order)</div>
             </div>
 
-            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center gap-3">
-                <HierarchicalDropdown
-                    title="Subject"
-                    placeholder="Subject"
-                    selected={selectedSubject}
-                    options={subjectOptions || defaultSubjectOptions}
-                    onSelect={onSelectSubject}
-                    align="left"
-                />
-                <HierarchicalDropdown
-                    title="Action"
-                    placeholder="Action"
-                    selected={selectedAction}
-                    options={actionOptions}
-                    onSelect={onSelectAction}
-                    align="right"
-                />
-                {selectedAction === 'Put in "__" folder named' && (
-                    <input
-                        type="text"
-                        placeholder="Folder name"
-                        value={folderName || ''}
-                        onChange={(e) => onFolderNameChange(e.target.value)}
-                        className="flex-1 px-3 py-2 rounded-lg border border-gray-300 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                <div className="flex items-center gap-3 mb-3">
+                    <HierarchicalDropdown
+                        title="Subject"
+                        placeholder="Subject"
+                        selected={selectedSubject}
+                        options={subjectOptions || defaultSubjectOptions}
+                        onSelect={onSelectSubject}
+                        align="left"
                     />
-                )}
-                <button
-                    onClick={onAddRule}
-                    className="cursor-pointer active:scale-95 w-12 h-10 rounded-lg bg-white border border-gray-300 shadow-inner flex items-center justify-center hover:bg-gray-100"
-                    title="Add rule"
-                >
-                    <Plus size={20} />
-                </button>
+                    <HierarchicalDropdown
+                        title="Action"
+                        placeholder="Action"
+                        selected={selectedAction}
+                        options={actionOptions || defaultActionOptions}
+                        onSelect={onSelectAction}
+                        onRename={onRenameFolder}
+                        onAddFolder={onAddFolder}
+                        onDeleteFolder={onDeleteFolder}
+                        align="right"
+                    />
+                    <button
+                        onClick={onAddRule}
+                        className="cursor-pointer active:scale-95 w-12 h-10 rounded-lg bg-white border border-gray-300 shadow-inner flex items-center justify-center hover:bg-gray-100 flex-shrink-0"
+                        title="Add rule"
+                    >
+                        <Plus size={20} />
+                    </button>
+                </div>
             </div>
 
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-white">
@@ -295,7 +466,10 @@ export function RulesPanel({
                 </button>
                 <button
                     onClick={onPreview}
-                    className="cursor-pointer active:scale-95 flex-1 py-2 border border-gray-400 rounded-lg bg-white hover:bg-gray-50 shadow-inner"
+                    className={`cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg shadow-inner transition-colors ${isPreviewMode
+                        ? 'bg-blue-500 text-white border-blue-600 hover:bg-blue-600'
+                        : 'bg-white border-gray-400 hover:bg-gray-50'
+                        }`}
                 >
                     Preview
                 </button>
