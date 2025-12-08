@@ -1,0 +1,15 @@
+C:\Users\rober\source\repos\GetDesktopInfo\GetDesktopInfo\obj\Debug\net8.0-windows\GetDesktopInfo.csproj.AssemblyReference.cache
+C:\Users\rober\source\repos\GetDesktopInfo\GetDesktopInfo\bin\Debug\net8.0-windows\GetDesktopInfo.exe
+C:\Users\rober\source\repos\GetDesktopInfo\GetDesktopInfo\bin\Debug\net8.0-windows\GetDesktopInfo.deps.json
+C:\Users\rober\source\repos\GetDesktopInfo\GetDesktopInfo\bin\Debug\net8.0-windows\GetDesktopInfo.runtimeconfig.json
+C:\Users\rober\source\repos\GetDesktopInfo\GetDesktopInfo\bin\Debug\net8.0-windows\GetDesktopInfo.dll
+C:\Users\rober\source\repos\GetDesktopInfo\GetDesktopInfo\bin\Debug\net8.0-windows\GetDesktopInfo.pdb
+C:\Users\rober\source\repos\GetDesktopInfo\GetDesktopInfo\obj\Debug\net8.0-windows\GetDesktopInfo.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\rober\source\repos\GetDesktopInfo\GetDesktopInfo\obj\Debug\net8.0-windows\GetDesktopInfo.AssemblyInfoInputs.cache
+C:\Users\rober\source\repos\GetDesktopInfo\GetDesktopInfo\obj\Debug\net8.0-windows\GetDesktopInfo.AssemblyInfo.cs
+C:\Users\rober\source\repos\GetDesktopInfo\GetDesktopInfo\obj\Debug\net8.0-windows\GetDesktopInfo.csproj.CoreCompileInputs.cache
+C:\Users\rober\source\repos\GetDesktopInfo\GetDesktopInfo\obj\Debug\net8.0-windows\GetDesktopInfo.dll
+C:\Users\rober\source\repos\GetDesktopInfo\GetDesktopInfo\obj\Debug\net8.0-windows\refint\GetDesktopInfo.dll
+C:\Users\rober\source\repos\GetDesktopInfo\GetDesktopInfo\obj\Debug\net8.0-windows\GetDesktopInfo.pdb
+C:\Users\rober\source\repos\GetDesktopInfo\GetDesktopInfo\obj\Debug\net8.0-windows\GetDesktopInfo.genruntimeconfig.cache
+C:\Users\rober\source\repos\GetDesktopInfo\GetDesktopInfo\obj\Debug\net8.0-windows\ref\GetDesktopInfo.dll

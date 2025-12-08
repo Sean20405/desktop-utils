@@ -1,0 +1,335 @@
+﻿[0] RDW_UserStudy
+    位置: (1368, 505)
+    路徑: C:\Users\rober\Desktop\RDW_UserStudy
+    圖示: 資料夾
+-----------------------------------
+[1] Unity 2022.3.47f1
+    位置: (0, 505)
+    路徑: C:\Users\Public\Desktop\Unity 2022.3.47f1.lnk
+    圖示: 已儲存 (Icon file: icon_1_Unity 2022.3.47f1.png)
+-----------------------------------
+[2] 自傳
+    位置: (988, 405)
+    路徑: C:\Users\rober\Desktop\自傳.pdf
+    圖示: 已儲存 (Icon file: icon_2_自傳.png)
+-----------------------------------
+[3] Management Application
+    位置: (0, 5)
+    路徑: C:\Users\Public\Desktop\Management Application
+    圖示: 資料夾
+-----------------------------------
+[4] 3
+    位置: (0, 105)
+    路徑: C:\Users\rober\Desktop\3
+    圖示: 資料夾
+-----------------------------------
+[5] 111550138_lab1
+    位置: (0, 205)
+    路徑: C:\Users\rober\Desktop\111550138_lab1
+    圖示: 資料夾
+-----------------------------------
+[6] GPE practice
+    位置: (0, 305)
+    路徑: C:\Users\rober\Desktop\GPE practice
+    圖示: 資料夾
+-----------------------------------
+[7] Logi Options+
+    位置: (0, 405)
+    路徑: C:\Users\Public\Desktop\Logi Options+.lnk
+    圖示: 已儲存 (Icon file: icon_7_Logi Options+.png)
+-----------------------------------
+[8] Statistic
+    位置: (0, 605)
+    路徑: C:\Users\rober\Desktop\Statistic
+    圖示: 資料夾
+-----------------------------------
+[9] Weighted Area
+    位置: (1216, 505)
+    路徑: C:\Users\rober\Desktop\Weighted Area
+    圖示: 資料夾
+-----------------------------------
+[10] XRProject1_Showcase
+    位置: (0, 905)
+    路徑: C:\Users\rober\Desktop\XRProject1_Showcase
+    圖示: 資料夾
+-----------------------------------
+[11] XRProject2_Showcase
+    位置: (76, 5)
+    路徑: C:\Users\rober\Desktop\XRProject2_Showcase
+    圖示: 資料夾
+-----------------------------------
+[12] 上課資料
+    位置: (76, 105)
+    路徑: C:\Users\rober\Desktop\上課資料
+    圖示: 資料夾
+-----------------------------------
+[13] 交接資料
+    位置: (76, 205)
+    路徑: C:\Users\rober\Desktop\交接資料
+    圖示: 資料夾
+-----------------------------------
+[14] 推甄資料
+    位置: (76, 305)
+    路徑: C:\Users\rober\Desktop\推甄資料
+    圖示: 資料夾
+-----------------------------------
+[15] 備審資料
+    位置: (76, 405)
+    路徑: C:\Users\rober\Desktop\備審資料
+    圖示: 資料夾
+-----------------------------------
+[16] Unity Hub
+    位置: (76, 505)
+    路徑: C:\Users\Public\Desktop\Unity Hub.lnk
+    圖示: 已儲存 (Icon file: icon_16_Unity Hub.png)
+-----------------------------------
+[17] 資工專題
+    位置: (76, 605)
+    路徑: C:\Users\rober\Desktop\資工專題
+    圖示: 資料夾
+-----------------------------------
+[18] Adobe Acrobat
+    位置: (76, 705)
+    路徑: C:\Users\Public\Desktop\Adobe Acrobat.lnk
+    圖示: 已儲存 (Icon file: icon_18_Adobe Acrobat.png)
+-----------------------------------
+[19] Battle.net
+    位置: (152, 505)
+    路徑: C:\Users\Public\Desktop\Battle.net.lnk
+    圖示: 已儲存 (Icon file: icon_19_Battle.net.png)
+-----------------------------------
+[20] BlueStacks 5
+    位置: (152, 605)
+    路徑: C:\Users\Public\Desktop\BlueStacks 5.lnk
+    圖示: 已儲存 (Icon file: icon_20_BlueStacks 5.png)
+-----------------------------------
+[21] ControlCenter
+    位置: (152, 705)
+    路徑: C:\Users\Public\Desktop\ControlCenter.lnk
+    圖示: 已儲存 (Icon file: icon_21_ControlCenter.png)
+-----------------------------------
+[22] FileZilla Client
+    位置: (152, 805)
+    路徑: C:\Users\Public\Desktop\FileZilla Client.lnk
+    圖示: 已儲存 (Icon file: icon_22_FileZilla Client.png)
+-----------------------------------
+[23] FortiClient VPN
+    位置: (152, 905)
+    路徑: C:\Users\Public\Desktop\FortiClient VPN.lnk
+    圖示: 已儲存 (Icon file: icon_23_FortiClient VPN.png)
+-----------------------------------
+[24] GeForce Experience
+    位置: (228, 5)
+    路徑: C:\Users\Public\Desktop\GeForce Experience.lnk
+    圖示: 已儲存 (Icon file: icon_24_GeForce Experience.png)
+-----------------------------------
+[25] Google Play Games
+    位置: (228, 105)
+    路徑: C:\Users\Public\Desktop\Google Play Games.lnk
+    圖示: 已儲存 (Icon file: icon_25_Google Play Games.png)
+-----------------------------------
+[26] IBM SPSS Statistics
+    位置: (228, 205)
+    路徑: C:\Users\Public\Desktop\IBM SPSS Statistics.lnk
+    圖示: 已儲存 (Icon file: icon_26_IBM SPSS Statistics.png)
+-----------------------------------
+[27] LINE Bot Designer
+    位置: (228, 305)
+    路徑: C:\Users\Public\Desktop\LINE Bot Designer.lnk
+    圖示: 已儲存 (Icon file: icon_27_LINE Bot Designer.png)
+-----------------------------------
+[28] McAfee Security Scan Plus
+    位置: (228, 505)
+    路徑: C:\Users\Public\Desktop\McAfee Security Scan Plus.lnk
+    圖示: 已儲存 (Icon file: icon_28_McAfee Security Scan.png)
+-----------------------------------
+[29] Meta Quest Developer Hub
+    位置: (228, 605)
+    路徑: C:\Users\Public\Desktop\Meta Quest Developer Hub.lnk
+    圖示: 已儲存 (Icon file: icon_29_Meta Quest Developer.png)
+-----------------------------------
+[30] Meta Quest Link
+    位置: (228, 705)
+    路徑: C:\Users\Public\Desktop\Meta Quest Link.lnk
+    圖示: 已儲存 (Icon file: icon_30_Meta Quest Link.png)
+-----------------------------------
+[31] Microsoft Edge
+    位置: (228, 805)
+    路徑: C:\Users\Public\Desktop\Microsoft Edge.lnk
+    圖示: 已儲存 (Icon file: icon_31_Microsoft Edge.png)
+-----------------------------------
+[32] MuseScore 4
+    位置: (228, 905)
+    路徑: C:\Users\Public\Desktop\MuseScore 4.lnk
+    圖示: 已儲存 (Icon file: icon_32_MuseScore 4.png)
+-----------------------------------
+[33] Oracle VM VirtualBox
+    位置: (304, 5)
+    路徑: C:\Users\Public\Desktop\Oracle VM VirtualBox.lnk
+    圖示: 已儲存 (Icon file: icon_33_Oracle VM VirtualBox.png)
+-----------------------------------
+[34] Overwolf
+    位置: (304, 105)
+    路徑: C:\Users\Public\Desktop\Overwolf.lnk
+    圖示: 已儲存 (Icon file: icon_34_Overwolf.png)
+-----------------------------------
+[35] PotPlayer 64 bit
+    位置: (304, 205)
+    路徑: C:\Users\Public\Desktop\PotPlayer 64 bit.lnk
+    圖示: 已儲存 (Icon file: icon_35_PotPlayer 64 bit.png)
+-----------------------------------
+[36] R 4.5.1
+    位置: (304, 305)
+    路徑: C:\Users\Public\Desktop\R 4.5.1.lnk
+    圖示: 已儲存 (Icon file: icon_36_R 4.5.1.png)
+-----------------------------------
+[37] RGBFusion
+    位置: (304, 405)
+    路徑: C:\Users\Public\Desktop\RGBFusion.lnk
+    圖示: 已儲存 (Icon file: icon_37_RGBFusion.png)
+-----------------------------------
+[38] Riot用戶端
+    位置: (304, 505)
+    路徑: C:\Users\Public\Desktop\Riot用戶端.lnk
+    圖示: 已儲存 (Icon file: icon_38_Riot用戶端.png)
+-----------------------------------
+[39] Steam
+    位置: (304, 605)
+    路徑: C:\Users\Public\Desktop\Steam.lnk
+    圖示: 已儲存 (Icon file: icon_39_Steam.png)
+-----------------------------------
+[40] Canva
+    位置: (304, 705)
+    路徑: C:\Users\rober\Desktop\Canva.lnk
+    圖示: 已儲存 (Icon file: icon_40_Canva.png)
+-----------------------------------
+[41] Chrome 遠端桌面
+    位置: (304, 805)
+    路徑: C:\Users\rober\Desktop\Chrome 遠端桌面.lnk
+    圖示: 已儲存 (Icon file: icon_41_Chrome 遠端桌面.png)
+-----------------------------------
+[42] CodeBlocks
+    位置: (304, 905)
+    路徑: C:\Users\rober\Desktop\CodeBlocks.lnk
+    圖示: 已儲存 (Icon file: icon_42_CodeBlocks.png)
+-----------------------------------
+[43] CurseForge
+    位置: (380, 5)
+    路徑: C:\Users\rober\Desktop\CurseForge.lnk
+    圖示: 已儲存 (Icon file: icon_43_CurseForge.png)
+-----------------------------------
+[44] Discord
+    位置: (380, 105)
+    路徑: C:\Users\rober\Desktop\Discord.lnk
+    圖示: 已儲存 (Icon file: icon_44_Discord.png)
+-----------------------------------
+[45] Docker Desktop
+    位置: (380, 205)
+    路徑: C:\Users\rober\Desktop\Docker Desktop.lnk
+    圖示: 已儲存 (Icon file: icon_45_Docker Desktop.png)
+-----------------------------------
+[46] FTB App
+    位置: (380, 305)
+    路徑: C:\Users\rober\Desktop\FTB App.lnk
+    圖示: 已儲存 (Icon file: icon_46_FTB App.png)
+-----------------------------------
+[47] GitHub Desktop
+    位置: (380, 405)
+    路徑: C:\Users\rober\Desktop\GitHub Desktop.lnk
+    圖示: 已儲存 (Icon file: icon_47_GitHub Desktop.png)
+-----------------------------------
+[48] Google Chrome
+    位置: (380, 505)
+    路徑: C:\Users\rober\Desktop\Google Chrome.lnk
+    圖示: 已儲存 (Icon file: icon_48_Google Chrome.png)
+-----------------------------------
+[49] Hearthstone Deck Tracker
+    位置: (380, 605)
+    路徑: C:\Users\rober\Desktop\Hearthstone Deck Tracker.lnk
+    圖示: 已儲存 (Icon file: icon_49_Hearthstone Deck Tra.png)
+-----------------------------------
+[50] LINE
+    位置: (380, 705)
+    路徑: C:\Users\rober\Desktop\LINE.lnk
+    圖示: 已儲存 (Icon file: icon_50_LINE.png)
+-----------------------------------
+[51] Moises
+    位置: (380, 805)
+    路徑: C:\Users\rober\Desktop\Moises.lnk
+    圖示: 已儲存 (Icon file: icon_51_Moises.png)
+-----------------------------------
+[52] MuseScore Studio 4
+    位置: (380, 905)
+    路徑: C:\Users\rober\Desktop\MuseScore Studio 4.lnk
+    圖示: 已儲存 (Icon file: icon_52_MuseScore Studio 4.png)
+-----------------------------------
+[53] Notion Calendar
+    位置: (456, 5)
+    路徑: C:\Users\rober\Desktop\Notion Calendar.lnk
+    圖示: 已儲存 (Icon file: icon_53_Notion Calendar.png)
+-----------------------------------
+[54] Notion
+    位置: (456, 105)
+    路徑: C:\Users\rober\Desktop\Notion.lnk
+    圖示: 已儲存 (Icon file: icon_54_Notion.png)
+-----------------------------------
+[55] NVIDIA GeForce NOW
+    位置: (456, 205)
+    路徑: C:\Users\rober\Desktop\NVIDIA GeForce NOW.lnk
+    圖示: 已儲存 (Icon file: icon_55_NVIDIA GeForce NOW.png)
+-----------------------------------
+[56] Paldeck Enhanced
+    位置: (456, 305)
+    路徑: C:\Users\rober\Desktop\Paldeck Enhanced.lnk
+    圖示: 已儲存 (Icon file: icon_56_Paldeck Enhanced.png)
+-----------------------------------
+[57] Perplexity
+    位置: (456, 405)
+    路徑: C:\Users\rober\Desktop\Perplexity.lnk
+    圖示: 已儲存 (Icon file: icon_57_Perplexity.png)
+-----------------------------------
+[58] Visual Studio Code
+    位置: (456, 605)
+    路徑: C:\Users\rober\Desktop\Visual Studio Code.lnk
+    圖示: 已儲存 (Icon file: icon_58_Visual Studio Code.png)
+-----------------------------------
+[59] Wondershare DVD Creator
+    位置: (456, 705)
+    路徑: C:\Users\rober\Desktop\Wondershare DVD Creator.lnk
+    圖示: 已儲存 (Icon file: icon_59_Wondershare DVD Crea.png)
+-----------------------------------
+[60] 辰翰 - Chrome
+    位置: (456, 805)
+    路徑: C:\Users\rober\Desktop\辰翰 - Chrome.lnk
+    圖示: 已儲存 (Icon file: icon_60_辰翰 - Chrome.png)
+-----------------------------------
+[61] 資源回收筒
+    位置: (456, 905)
+    路徑: 找不到路徑
+    圖示: 無
+-----------------------------------
+[62] 日文五
+    位置: (684, 105)
+    路徑: C:\Users\rober\Desktop\日文五
+    圖示: 資料夾
+-----------------------------------
+[63] Image Generation
+    位置: (760, 105)
+    路徑: C:\Users\rober\Desktop\Image Generation
+    圖示: 資料夾
+-----------------------------------
+[64] Diffusemix
+    位置: (836, 105)
+    路徑: C:\Users\rober\Desktop\Diffusemix
+    圖示: 資料夾
+-----------------------------------
+[65] 清大
+    位置: (988, 105)
+    路徑: C:\Users\rober\Desktop\清大
+    圖示: 資料夾
+-----------------------------------
+[66] 鼓譜
+    位置: (684, 505)
+    路徑: C:\Users\rober\Desktop\鼓譜
+    圖示: 資料夾
+-----------------------------------
