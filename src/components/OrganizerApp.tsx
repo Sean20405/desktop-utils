@@ -885,8 +885,13 @@ export function OrganizerApp() {
         });
       });
 
-      const totalAssigned = assignments.reduce((sum, a) => sum + a.files.length, 0);
-      alert(`成功將 ${totalAssigned} 個檔案分配到標籤！`);
+      // 統計分配結果
+      const totalAssignments = assignments.reduce((sum, a) => sum + a.files.length, 0);
+      const uniqueFilesAssigned = new Set(
+        assignments.flatMap(a => a.files)
+      ).size;
+      
+      alert(`成功分配完成！\n\n共對 ${uniqueFilesAssigned} 個檔案分配了 ${totalAssignments} 個標籤。`);
     } catch (error) {
       console.error('分配檔案時發生錯誤:', error);
       const errorMessage = error instanceof Error ? error.message : '未知錯誤';
