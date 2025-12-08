@@ -19,13 +19,20 @@ npm install
 ```
 
 3. Set up Gemini API Key:
-   - Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+- Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
+- We use gemini-2.5-flash
+- There are 2 methods to use api key:
+- method 1: Set API key in enviroment
    - Create a `.env` file in the root directory
    - Add the following line:
    ```
    VITE_GEMINI_API_KEY=your_api_key_here
    ```
-   - We use gemini-2.5-flash
+- method 2: Set API key through entering in App
+   - Open tag page
+   - click any AI button
+   - if there is no known API key, a window will appear and you can enter your api key
+   - API key will only store in session. If click F5, the key will be deleted
 
 ### Development
 
