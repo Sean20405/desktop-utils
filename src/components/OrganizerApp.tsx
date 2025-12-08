@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, GripVertical, MoreVertical, Star, Trash2, X, Plus, Loader2 } from "lucide-react";
 import { useDesktop } from "../context/DesktopContext";
-import { DndContext, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, type DragEndEvent, useDraggable, useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { generateTagsFromFiles, assignFilesToTags, hasGeminiApiKey, setGeminiApiKey } from "../utils/geminiApi";
@@ -47,8 +47,21 @@ const actionOptions: HierarchyNode[] = [
   { label: "zip" },
 ];
 
-function DesktopPreview() {
-  const { items, background } = useDesktop();
+// Draggable Preview File Component
+function DraggablePreviewFile({
+  item,
+  scale,
+}: {
+  item: { id: string; label: string; x: number; y: number; imageUrl?: string };
+  scale: number;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `preview-file-${item.id}`,
+    data: {
+      fileName: item.label,
+      sourceTagId: null, // 來自 preview，不是來自任何 tag
+    },
+  });
 
   const resolveIconUrl = (url?: string) => {
     if (!url) return "";
@@ -56,6 +69,46 @@ function DesktopPreview() {
     const base = import.meta.env.BASE_URL || "/";
     return `${base}${url.replace(/^\//, "")}`;
   };
+
+  const iconSrc = resolveIconUrl(item.imageUrl);
+  const dragStyle = CSS.Translate.toString(transform);
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className="absolute cursor-grab active:cursor-grabbing"
+      style={{
+        left: item.x * scale,
+        top: item.y * scale,
+        transform: dragStyle ? `${dragStyle} scale(${scale})` : `scale(${scale})`,
+        transformOrigin: "top left",
+        opacity: isDragging ? 0.5 : 1,
+      }}
+    >
+      <div className="w-16 h-16 flex items-center justify-center bg-white/25 backdrop-blur rounded-lg border border-white/30 shadow-md">
+        {iconSrc ? (
+          <img
+            src={iconSrc}
+            alt={item.label}
+            className="w-12 h-12 object-contain drop-shadow pointer-events-none"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = `${import.meta.env.BASE_URL || "/"}icons/organizer.svg`;
+            }}
+          />
+        ) : (
+          <div className="w-10 h-10 bg-gray-300 rounded" />
+        )}
+      </div>
+      <div className="mt-1 text-white text-xs text-center drop-shadow font-semibold">{item.label}</div>
+    </div>
+  );
+}
+
+function DesktopPreview() {
+  const { items, background } = useDesktop();
 
   // Keep preview proportional to a 1920x1080 desktop but scaled down without stretching layout.
   const { scale, previewWidth, previewHeight } = useMemo(() => {
@@ -82,38 +135,9 @@ function DesktopPreview() {
           backgroundRepeat: "no-repeat",
         }}
       >
-        {items.map((item) => {
-          const iconSrc = resolveIconUrl(item.imageUrl);
-          return (
-            <div
-              key={item.id}
-              className="absolute"
-              style={{
-                left: item.x * scale,
-                top: item.y * scale,
-                transform: `scale(${scale})`,
-                transformOrigin: "top left",
-              }}
-            >
-              <div className="w-16 h-16 flex items-center justify-center bg-white/25 backdrop-blur rounded-lg border border-white/30 shadow-md">
-                {iconSrc ? (
-                  <img
-                    src={iconSrc}
-                    alt={item.label}
-                    className="w-12 h-12 object-contain drop-shadow"
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = `${import.meta.env.BASE_URL || "/"}icons/organizer.svg`;
-                    }}
-                  />
-                ) : (
-                  <div className="w-10 h-10 bg-gray-300 rounded" />
-                )}
-              </div>
-              <div className="mt-1 text-white text-xs text-center drop-shadow font-semibold">{item.label}</div>
-            </div>
-          );
-        })}
+        {items.map((item) => (
+          <DraggablePreviewFile key={item.id} item={item} scale={scale} />
+        ))}
       </div>
     </div>
   );
@@ -220,6 +244,42 @@ function HierarchicalDropdown({
   );
 }
 
+// Draggable File Item Component
+function DraggableFileItem({
+  fileName,
+  tagColor,
+  sourceTagId,
+}: {
+  fileName: string;
+  tagColor: string;
+  sourceTagId: string;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `file-${sourceTagId}-${fileName}`,
+    data: {
+      fileName,
+      sourceTagId,
+    },
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ backgroundColor: tagColor + "40", ...style }}
+      {...listeners}
+      {...attributes}
+      className="px-3 py-1 rounded-lg text-sm cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity"
+    >
+      {fileName}
+    </div>
+  );
+}
+
 // Sortable Tag Item Component
 function SortableTagItem({
   tag,
@@ -243,6 +303,13 @@ function SortableTagItem({
   onSaveEdit: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tag.id });
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: `tag-drop-${tag.id}`,
+    data: {
+      tagId: tag.id,
+      type: 'tag-drop-zone',
+    },
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -311,17 +378,30 @@ function SortableTagItem({
         </button>
       </div>
 
-      {tag.expanded && tag.items.length > 0 && (
-        <div className="px-3 pb-3 pt-0">
-          <div className="flex gap-2 flex-wrap p-2 bg-gray-50 rounded">
-            {tag.items.map((item, idx) => (
-              <div key={idx} className="px-3 py-1 rounded-lg text-sm" style={{ backgroundColor: tag.color + "40" }}>
-                {item}
+      <div
+        ref={setDroppableRef}
+        className={`transition-colors min-h-[20px] ${
+          isOver ? "bg-blue-50 border-2 border-blue-300 border-dashed border-t-0 rounded-b-lg" : ""
+        }`}
+      >
+        {tag.expanded ? (
+          <div className="px-3 pb-3 pt-0">
+            {tag.items.length > 0 ? (
+              <div className="flex gap-2 flex-wrap p-2 bg-gray-50 rounded">
+                {tag.items.map((item, idx) => (
+                  <DraggableFileItem key={idx} fileName={item} tagColor={tag.color} sourceTagId={tag.id} />
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="p-2 bg-gray-50 rounded text-sm text-gray-400 text-center border-2 border-dashed border-gray-200">
+                拖放檔案到此處
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="px-3 pb-3 pt-0 min-h-[20px]" />
+        )}
+      </div>
     </div>
   );
 }
@@ -569,13 +649,92 @@ export function OrganizerApp() {
   const handleTagDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (over && active.id !== over.id) {
-      setTags((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
+    if (!over) return;
 
-        return arrayMove(items, oldIndex, newIndex);
-      });
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // 調試：輸出拖放信息
+    console.log("Drag end:", { activeId, overId, activeData: active.data.current });
+
+    // 檢查是否拖動的是檔案（從 tag 中的檔案或 preview 中的檔案）
+    if (activeId.startsWith("file-") || activeId.startsWith("preview-file-")) {
+      const activeData = active.data.current;
+      if (!activeData) {
+        console.log("No active data");
+        return;
+      }
+
+      const fileName = activeData.fileName as string;
+      const sourceTagId = activeData.sourceTagId as string | null;
+
+      console.log("File drag:", { fileName, sourceTagId, overId });
+
+      // 檢查是否拖放到 tag 上
+      let targetTagId: string | null = null;
+      
+      // 首先檢查 over.data 中是否有 tagId
+      const overData = over.data.current;
+      if (overData && overData.type === 'tag-drop-zone' && overData.tagId) {
+        targetTagId = overData.tagId as string;
+        console.log("Found tag from over.data, targetTagId:", targetTagId);
+      } else if (overId.startsWith("tag-drop-")) {
+        targetTagId = overId.replace("tag-drop-", "");
+        console.log("Found tag-drop, targetTagId:", targetTagId);
+      } else {
+        // 檢查 overId 是否是某個 tag 的 id
+        const targetTag = tags.find(tag => tag.id === overId);
+        if (targetTag) {
+          targetTagId = overId;
+          console.log("Found tag by id, targetTagId:", targetTagId);
+        } else {
+          console.log("No matching tag found for overId:", overId, "overData:", overData);
+        }
+      }
+
+      if (targetTagId) {
+        console.log("Moving file:", { fileName, from: sourceTagId, to: targetTagId });
+        setTags((prevTags) => {
+          return prevTags.map((tag) => {
+            // 從源 tag 中移除檔案（如果有的話，且不是拖放到同一個 tag）
+            if (sourceTagId && tag.id === sourceTagId && tag.id !== targetTagId) {
+              console.log("Removing from source tag:", tag.id);
+              return {
+                ...tag,
+                items: tag.items.filter((item) => item !== fileName),
+              };
+            }
+
+            // 添加到目標 tag（如果檔案不在該 tag 中）
+            if (tag.id === targetTagId && !tag.items.includes(fileName)) {
+              console.log("Adding to target tag:", tag.id);
+              return {
+                ...tag,
+                items: [...tag.items, fileName],
+              };
+            }
+
+            return tag;
+          });
+        });
+      } else {
+        console.log("No target tag found");
+      }
+    } else {
+      // 拖動的是 tag 本身，進行排序
+      // 只有在 overId 是 tag.id 且不是檔案拖放時才進行排序
+      const isTagId = tags.some(tag => tag.id === overId);
+      if (isTagId && activeId !== overId && !activeId.startsWith("file-") && !activeId.startsWith("preview-file-")) {
+        setTags((items) => {
+          const oldIndex = items.findIndex((item) => item.id === activeId);
+          const newIndex = items.findIndex((item) => item.id === overId);
+
+          if (oldIndex !== -1 && newIndex !== -1) {
+            return arrayMove(items, oldIndex, newIndex);
+          }
+          return items;
+        });
+      }
     }
   };
 
@@ -828,8 +987,9 @@ export function OrganizerApp() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col bg-[#d8d8d8] p-4 gap-4 text-gray-900">
-      <div className="flex flex-1 gap-4 min-h-0">
+    <DndContext onDragEnd={handleTagDragEnd}>
+      <div className="h-full flex flex-col bg-[#d8d8d8] p-4 gap-4 text-gray-900">
+        <div className="flex flex-1 gap-4 min-h-0">
         <div className="flex-[1.2] flex flex-col gap-3 min-w-[520px]">
           <div className="h-[360px] rounded-2xl overflow-hidden shadow-inner border border-gray-500 bg-gradient-to-b from-gray-800 to-gray-700">
             <DesktopPreview />
@@ -924,29 +1084,27 @@ export function OrganizerApp() {
                   <Plus size={20} /> Create New Tag
                 </button>
 
-                <DndContext onDragEnd={handleTagDragEnd}>
-                  <div className="flex-1 min-h-0 overflow-y-auto">
-                    <div className="font-semibold mb-3 text-sm">All Tags ({tags.length})</div>
-                    <SortableContext items={tags.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                      <div className="flex flex-col gap-2">
-                        {tags.map((tag) => (
-                          <SortableTagItem
-                            key={tag.id}
-                            tag={tag}
-                            onToggleExpand={() => toggleTagExpand(tag.id)}
-                            onStartEdit={() => startEditingTag(tag.id, tag.name)}
-                            onDelete={() => deleteTag(tag.id)}
-                            onColorChange={(color) => updateTagColor(tag.id, color)}
-                            isEditing={editingTagId === tag.id}
-                            editValue={editingName}
-                            onEditChange={setEditingName}
-                            onSaveEdit={() => saveTagName(tag.id)}
-                          />
-                        ))}
-                      </div>
-                    </SortableContext>
-                  </div>
-                </DndContext>
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                  <div className="font-semibold mb-3 text-sm">All Tags ({tags.length})</div>
+                  <SortableContext items={tags.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                    <div className="flex flex-col gap-2">
+                      {tags.map((tag) => (
+                        <SortableTagItem
+                          key={tag.id}
+                          tag={tag}
+                          onToggleExpand={() => toggleTagExpand(tag.id)}
+                          onStartEdit={() => startEditingTag(tag.id, tag.name)}
+                          onDelete={() => deleteTag(tag.id)}
+                          onColorChange={(color) => updateTagColor(tag.id, color)}
+                          isEditing={editingTagId === tag.id}
+                          editValue={editingName}
+                          onEditChange={setEditingName}
+                          onSaveEdit={() => saveTagName(tag.id)}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </div>
 
                 <div className="flex gap-3 pt-3 border-t shrink-0">
                   <button
@@ -1115,6 +1273,7 @@ export function OrganizerApp() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </DndContext>
   );
 }
