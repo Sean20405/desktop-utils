@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, GripVertical, MoreVertical, Star, Trash2, X, Plus, Monitor } from "lucide-react";
+import { ChevronDown, GripVertical, MoreVertical, Star, Trash2, X, Plus, Loader2, Monitor } from "lucide-react";
 import { useDesktop } from "../context/DesktopContext";
-import { DndContext, type DragEndEvent } from "@dnd-kit/core";
+import { DndContext, type DragEndEvent, useDraggable, useDroppable } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { generateTagsFromFiles, assignFilesToTags, hasGeminiApiKey, setGeminiApiKey } from "../utils/geminiApi";
 
 type HierarchyNode = { label: string; children?: HierarchyNode[] };
 
@@ -46,6 +47,80 @@ const actionOptions: HierarchyNode[] = [
   { label: "zip" },
 ];
 
+// Draggable Preview File Component
+function DraggablePreviewFile({
+  item,
+  scale,
+}: {
+  item: { id: string; label: string; x: number; y: number; imageUrl?: string };
+  scale: number;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `preview-file-${item.id}`,
+    data: {
+      fileName: item.label,
+      sourceTagId: null, // 來自 preview，不是來自任何 tag
+    },
+  });
+
+  const resolveIconUrl = (url?: string) => {
+    if (!url) return "";
+    if (url.startsWith("http") || url.startsWith("data:") || url.startsWith("blob:")) return url;
+    
+    const base = import.meta.env.BASE_URL || "/";
+    
+    // Avoid double-prefixing if the path already contains the base URL
+    if (url.startsWith(base)) {
+      return url;
+    }
+
+    return `${base}${url.replace(/^\//, "")}`;
+  };
+
+  const iconSrc = resolveIconUrl(item.imageUrl);
+  const dragStyle = CSS.Translate.toString(transform);
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className="absolute flex flex-col items-center gap-1 p-1 w-20 cursor-grab active:cursor-grabbing"
+      style={{
+        left: item.x * scale,
+        top: item.y * scale,
+        transform: dragStyle ? `${dragStyle} scale(${scale})` : `scale(${scale})`,
+        transformOrigin: "top left",
+        opacity: isDragging ? 0.5 : 1,
+      }}
+    >
+      <div className="w-12 h-12 flex items-center justify-center">
+        {iconSrc ? (
+          <img
+            src={iconSrc}
+            alt={item.label}
+            className="w-full h-full object-contain drop-shadow pointer-events-none"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = `${import.meta.env.BASE_URL || "/"}icons/organizer.svg`;
+            }}
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-400/50 rounded-lg flex items-center justify-center backdrop-blur-sm">
+            <Monitor className="w-8 h-8 text-white/80" />
+          </div>
+        )}
+      </div>
+      <div 
+        className="text-white text-xs font-normal drop-shadow-md text-center select-none px-1 rounded-sm line-clamp-2"
+        style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
+      >
+        {item.label}
+      </div>
+    </div>
+  );
+}
+
 function DesktopPreview() {
   const { items, background } = useDesktop();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -64,20 +139,6 @@ function DesktopPreview() {
     observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, []);
-
-  const resolveIconUrl = (url?: string) => {
-    if (!url) return "";
-    if (url.startsWith("http") || url.startsWith("data:") || url.startsWith("blob:")) return url;
-    
-    const base = import.meta.env.BASE_URL || "/";
-    
-    // Avoid double-prefixing if the path already contains the base URL
-    if (url.startsWith(base)) {
-      return url;
-    }
-
-    return `${base}${url.replace(/^\//, "")}`;
-  };
 
   // Keep preview proportional to a 1920x1080 desktop but scaled down without stretching layout.
   const { scale, previewWidth, previewHeight } = useMemo(() => {
@@ -115,45 +176,9 @@ function DesktopPreview() {
           backgroundRepeat: "no-repeat",
         }}
       >
-        {items.map((item) => {
-          const iconSrc = resolveIconUrl(item.imageUrl);
-          return (
-            <div
-              key={item.id}
-              className="absolute flex flex-col items-center gap-1 p-1 w-20"
-              style={{
-                left: item.x * scale,
-                top: item.y * scale,
-                transform: `scale(${scale})`,
-                transformOrigin: "top left",
-              }}
-            >
-              <div className="w-12 h-12 flex items-center justify-center">
-                {iconSrc ? (
-                  <img
-                    src={iconSrc}
-                    alt={item.label}
-                    className="w-full h-full object-contain drop-shadow"
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = `${import.meta.env.BASE_URL || "/"}icons/organizer.svg`;
-                    }}
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gray-400/50 rounded-lg flex items-center justify-center backdrop-blur-sm">
-                    <Monitor className="w-8 h-8 text-white/80" />
-                  </div>
-                )}
-              </div>
-              <div 
-                className="text-white text-xs font-normal drop-shadow-md text-center select-none px-1 rounded-sm line-clamp-2"
-                style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
-              >
-                {item.label}
-              </div>
-            </div>
-          );
-        })}
+        {items.map((item) => (
+          <DraggablePreviewFile key={item.id} item={item} scale={scale} />
+        ))}
       </div>
     </div>
   );
@@ -260,6 +285,86 @@ function HierarchicalDropdown({
   );
 }
 
+// Draggable File Item Component
+function DraggableFileItem({
+  fileName,
+  tagColor,
+  sourceTagId,
+  onDelete,
+}: {
+  fileName: string;
+  tagColor: string;
+  sourceTagId: string;
+  onDelete?: () => void;
+}) {
+  const { items } = useDesktop();
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `file-${sourceTagId}-${fileName}`,
+    data: {
+      fileName,
+      sourceTagId,
+    },
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    onDelete?.();
+  };
+
+  // 根據檔案名稱找到對應的桌面項目
+  const desktopItem = items.find(item => item.label === fileName);
+  
+  const resolveIconUrl = (url?: string) => {
+    if (!url) return "";
+    if (url.startsWith("http")) return url;
+    const base = import.meta.env.BASE_URL || "/";
+    return `${base}${url.replace(/^\//, "")}`;
+  };
+
+  const iconSrc = desktopItem?.imageUrl ? resolveIconUrl(desktopItem.imageUrl) : null;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{ backgroundColor: tagColor + "40", ...style }}
+      className="relative group px-2 py-2 rounded-lg text-sm cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity flex flex-col items-center gap-1 min-w-[60px] max-w-[80px]"
+    >
+      <div {...listeners} {...attributes} className="flex flex-col items-center gap-1 w-full">
+        {iconSrc ? (
+          <img
+            src={iconSrc}
+            alt={fileName}
+            className="w-8 h-8 object-contain"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        ) : (
+          <div className="w-8 h-8 bg-gray-300 rounded" />
+        )}
+        <span className="text-xs text-center line-clamp-2 break-words w-full">{fileName}</span>
+      </div>
+      {onDelete && (
+        <button
+          onClick={handleDelete}
+          className="absolute top-1 right-1 w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-full"
+          title="從此標籤中移除"
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <X size={12} />
+        </button>
+      )}
+    </div>
+  );
+}
+
 // Sortable Tag Item Component
 function SortableTagItem({
   tag,
@@ -271,6 +376,7 @@ function SortableTagItem({
   editValue,
   onEditChange,
   onSaveEdit,
+  onRemoveFile,
 }: {
   tag: { id: string; name: string; color: string; items: string[]; expanded: boolean };
   onToggleExpand: () => void;
@@ -281,8 +387,16 @@ function SortableTagItem({
   editValue: string;
   onEditChange: (value: string) => void;
   onSaveEdit: () => void;
+  onRemoveFile: (fileName: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: tag.id });
+  const { setNodeRef: setDroppableRef, isOver } = useDroppable({
+    id: `tag-drop-${tag.id}`,
+    data: {
+      tagId: tag.id,
+      type: 'tag-drop-zone',
+    },
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -351,17 +465,36 @@ function SortableTagItem({
         </button>
       </div>
 
-      {tag.expanded && tag.items.length > 0 && (
-        <div className="px-3 pb-3 pt-0">
-          <div className="flex gap-2 flex-wrap p-2 bg-gray-50 rounded">
-            {tag.items.map((item, idx) => (
-              <div key={idx} className="px-3 py-1 rounded-lg text-sm" style={{ backgroundColor: tag.color + "40" }}>
-                {item}
+      <div
+        ref={setDroppableRef}
+        className={`transition-colors min-h-[20px] ${
+          isOver ? "bg-blue-50 border-2 border-blue-300 border-dashed border-t-0 rounded-b-lg" : ""
+        }`}
+      >
+        {tag.expanded ? (
+          <div className="px-3 pb-3 pt-0">
+            {tag.items.length > 0 ? (
+              <div className="flex gap-2 flex-wrap p-2 bg-gray-50 rounded">
+                {tag.items.map((item, idx) => (
+                  <DraggableFileItem
+                    key={idx}
+                    fileName={item}
+                    tagColor={tag.color}
+                    sourceTagId={tag.id}
+                    onDelete={() => onRemoveFile(item)}
+                  />
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="p-2 bg-gray-50 rounded text-sm text-gray-400 text-center border-2 border-dashed border-gray-200">
+                拖放檔案到此處
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="px-3 pb-3 pt-0 min-h-[20px]" />
+        )}
+      </div>
     </div>
   );
 }
@@ -473,30 +606,37 @@ export function OrganizerApp() {
     },
   ]);
   const [tags, setTags] = useState<{ id: string; name: string; color: string; items: string[]; expanded: boolean }[]>([
-    {
-      id: "all",
-      name: "ALL",
-      color: "#fb923c",
-      items: ["Game 1", "Game 2", "Game 3", "Game 4", "doc 1", "doc 2"],
-      expanded: true,
-    },
-    {
-      id: "games",
-      name: "Games",
-      color: "#60a5fa",
-      items: ["Game 1", "Game 2", "Game 3", "Game 4"],
-      expanded: false,
-    },
-    {
-      id: "file-related",
-      name: "File Related",
-      color: "#4ade80",
-      items: ["doc 1", "doc 2"],
-      expanded: false,
-    },
+    // 預設標籤已註解，可以通過 AI Generate Tag 或手動創建標籤
+    // {
+    //   id: "all",
+    //   name: "ALL",
+    //   color: "#fb923c",
+    //   items: ["Game 1", "Game 2", "Game 3", "Game 4", "doc 1", "doc 2"],
+    //   expanded: true,
+    // },
+    // {
+    //   id: "games",
+    //   name: "Games",
+    //   color: "#60a5fa",
+    //   items: ["Game 1", "Game 2", "Game 3", "Game 4"],
+    //   expanded: false,
+    // },
+    // {
+    //   id: "file-related",
+    //   name: "File Related",
+    //   color: "#4ade80",
+    //   items: ["doc 1", "doc 2"],
+    //   expanded: false,
+    // },
   ]);
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [isGeneratingTags, setIsGeneratingTags] = useState(false);
+  const [isAssigningTags, setIsAssigningTags] = useState(false);
+  const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState("");
+  const [pendingAction, setPendingAction] = useState<"generate" | "assign" | null>(null);
+  const { items } = useDesktop();
 
   const toggleHistoryStar = (id: string) => {
     setHistoryItems((prev) =>
@@ -578,6 +718,20 @@ export function OrganizerApp() {
     setTags((prev) => prev.filter((tag) => tag.id !== id));
   };
 
+  const removeFileFromTag = (tagId: string, fileName: string) => {
+    setTags((prev) =>
+      prev.map((tag) => {
+        if (tag.id === tagId) {
+          return {
+            ...tag,
+            items: tag.items.filter((item) => item !== fileName),
+          };
+        }
+        return tag;
+      })
+    );
+  };
+
   const toggleTagExpand = (id: string) => {
     setTags((prev) => prev.map((tag) => (tag.id === id ? { ...tag, expanded: !tag.expanded } : tag)));
   };
@@ -602,13 +756,256 @@ export function OrganizerApp() {
   const handleTagDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (over && active.id !== over.id) {
-      setTags((items) => {
-        const oldIndex = items.findIndex((item) => item.id === active.id);
-        const newIndex = items.findIndex((item) => item.id === over.id);
+    if (!over) return;
 
-        return arrayMove(items, oldIndex, newIndex);
+    const activeId = active.id as string;
+    const overId = over.id as string;
+
+    // 調試：輸出拖放信息
+    console.log("Drag end:", { activeId, overId, activeData: active.data.current });
+
+    // 檢查是否拖動的是檔案（從 tag 中的檔案或 preview 中的檔案）
+    if (activeId.startsWith("file-") || activeId.startsWith("preview-file-")) {
+      const activeData = active.data.current;
+      if (!activeData) {
+        console.log("No active data");
+        return;
+      }
+
+      const fileName = activeData.fileName as string;
+      const sourceTagId = activeData.sourceTagId as string | null;
+
+      console.log("File drag:", { fileName, sourceTagId, overId });
+
+      // 檢查是否拖放到 tag 上
+      let targetTagId: string | null = null;
+      
+      // 首先檢查 over.data 中是否有 tagId
+      const overData = over.data.current;
+      if (overData && overData.type === 'tag-drop-zone' && overData.tagId) {
+        targetTagId = overData.tagId as string;
+        console.log("Found tag from over.data, targetTagId:", targetTagId);
+      } else if (overId.startsWith("tag-drop-")) {
+        targetTagId = overId.replace("tag-drop-", "");
+        console.log("Found tag-drop, targetTagId:", targetTagId);
+      } else {
+        // 檢查 overId 是否是某個 tag 的 id
+        const targetTag = tags.find(tag => tag.id === overId);
+        if (targetTag) {
+          targetTagId = overId;
+          console.log("Found tag by id, targetTagId:", targetTagId);
+        } else {
+          console.log("No matching tag found for overId:", overId, "overData:", overData);
+        }
+      }
+
+      if (targetTagId) {
+        console.log("Moving file:", { fileName, from: sourceTagId, to: targetTagId });
+        setTags((prevTags) => {
+          return prevTags.map((tag) => {
+            // 從源 tag 中移除檔案（如果有的話，且不是拖放到同一個 tag）
+            if (sourceTagId && tag.id === sourceTagId && tag.id !== targetTagId) {
+              console.log("Removing from source tag:", tag.id);
+              return {
+                ...tag,
+                items: tag.items.filter((item) => item !== fileName),
+              };
+            }
+
+            // 添加到目標 tag（如果檔案不在該 tag 中）
+            if (tag.id === targetTagId && !tag.items.includes(fileName)) {
+              console.log("Adding to target tag:", tag.id);
+              return {
+                ...tag,
+                items: [...tag.items, fileName],
+              };
+            }
+
+            return tag;
+          });
+        });
+      } else {
+        console.log("No target tag found");
+      }
+    } else {
+      // 拖動的是 tag 本身，進行排序
+      // 只有在 overId 是 tag.id 且不是檔案拖放時才進行排序
+      const isTagId = tags.some(tag => tag.id === overId);
+      if (isTagId && activeId !== overId && !activeId.startsWith("file-") && !activeId.startsWith("preview-file-")) {
+        setTags((items) => {
+          const oldIndex = items.findIndex((item) => item.id === activeId);
+          const newIndex = items.findIndex((item) => item.id === overId);
+
+          if (oldIndex !== -1 && newIndex !== -1) {
+            return arrayMove(items, oldIndex, newIndex);
+          }
+          return items;
+        });
+      }
+    }
+  };
+
+  // 處理 API Key 輸入
+  const handleApiKeySubmit = () => {
+    if (!apiKeyInput.trim()) {
+      alert('請輸入 Gemini API Key');
+      return;
+    }
+    const apiKey = apiKeyInput.trim();
+    setGeminiApiKey(apiKey);
+    setShowApiKeyDialog(false);
+    setApiKeyInput("");
+    
+    // 執行待處理的操作（使用 setTimeout 確保 sessionStorage 已更新）
+    const action = pendingAction;
+    setPendingAction(null);
+    
+    setTimeout(() => {
+      if (action === "generate") {
+        handleAIGenerateTags();
+      } else if (action === "assign") {
+        handleAIAssignTags();
+      }
+    }, 0);
+  };
+
+  // AI Generate Tag 功能
+  const handleAIGenerateTags = async () => {
+    if (isGeneratingTags) return;
+    
+    // 檢查是否有 API Key
+    if (!hasGeminiApiKey()) {
+      setPendingAction("generate");
+      setShowApiKeyDialog(true);
+      return;
+    }
+    
+    setIsGeneratingTags(true);
+    try {
+      // 獲取桌面上的所有檔案（排除 "ALL" 標籤）
+      const desktopFiles = items.map(item => ({
+        id: item.id,
+        label: item.label,
+        type: item.type,
+      }));
+
+      if (desktopFiles.length === 0) {
+        alert('桌面上沒有檔案可以分析');
+        return;
+      }
+
+      // 調用 Gemini API 生成標籤
+      const generatedTags = await generateTagsFromFiles(desktopFiles);
+
+      // 將生成的標籤添加到現有標籤列表（排除 "ALL" 標籤）
+      const existingTagNames = tags.filter(t => t.id !== 'all').map(t => t.name.toLowerCase());
+      const newTags = generatedTags
+        .filter(tag => !existingTagNames.includes(tag.name.toLowerCase()))
+        .map(tag => ({
+          id: `tag-${Date.now()}-${Math.random()}`,
+          name: tag.name,
+          color: tag.color || '#fb923c',
+          items: [],
+          expanded: true,
+        }));
+
+      if (newTags.length > 0) {
+        setTags(prev => {
+          // 保留 "ALL" 標籤在第一位，其他標籤在後面
+          const allTag = prev.find(t => t.id === 'all');
+          const otherTags = prev.filter(t => t.id !== 'all');
+          return allTag ? [allTag, ...otherTags, ...newTags] : [...otherTags, ...newTags];
+        });
+        alert(`成功生成 ${newTags.length} 個新標籤！`);
+      } else {
+        alert('沒有生成新的標籤（可能所有標籤都已存在）');
+      }
+    } catch (error) {
+      console.error('生成標籤時發生錯誤:', error);
+      const errorMessage = error instanceof Error ? error.message : '未知錯誤';
+      alert(`生成標籤時發生錯誤：\n${errorMessage}\n\n請確認：\n.env 文件已正確設置`);
+    } finally {
+      setIsGeneratingTags(false);
+    }
+  };
+
+  // AI Assign Tag 功能
+  const handleAIAssignTags = async () => {
+    if (isAssigningTags) return;
+
+    // 檢查是否有 API Key
+    if (!hasGeminiApiKey()) {
+      setPendingAction("assign");
+      setShowApiKeyDialog(true);
+      return;
+    }
+
+    // 排除 "ALL" 標籤
+    const existingTags = tags.filter(t => t.id !== 'all');
+    
+    if (existingTags.length === 0) {
+      alert('請先創建至少一個標籤（除了 ALL）');
+      return;
+    }
+
+    setIsAssigningTags(true);
+    try {
+      // 獲取桌面上的所有檔案
+      const desktopFiles = items.map(item => ({
+        id: item.id,
+        label: item.label,
+        type: item.type,
+      }));
+
+      if (desktopFiles.length === 0) {
+        alert('桌面上沒有檔案可以分配');
+        return;
+      }
+
+      // 準備現有標籤資訊（只包含名稱和現有檔案）
+      const tagsForAPI = existingTags.map(tag => ({
+        name: tag.name,
+        items: tag.items,
+      }));
+
+      // 調用 Gemini API 分配檔案
+      const assignments = await assignFilesToTags(desktopFiles, tagsForAPI);
+
+      // 更新標籤，將檔案分配到對應的標籤下
+      setTags(prev => {
+        return prev.map(tag => {
+          if (tag.id === 'all') {
+            // 更新 ALL 標籤，包含所有桌面檔案
+            const allFileNames = items.map(item => item.label);
+            return { ...tag, items: allFileNames };
+          }
+
+          // 找到對應的分配結果
+          const assignment = assignments.find(a => a.tagName === tag.name);
+          if (assignment && assignment.files.length > 0) {
+            // 合併現有檔案和新分配的檔案，去重
+            const mergedItems = Array.from(new Set([...tag.items, ...assignment.files]));
+            return { ...tag, items: mergedItems };
+          }
+
+          return tag;
+        });
       });
+
+      // 統計分配結果
+      const totalAssignments = assignments.reduce((sum, a) => sum + a.files.length, 0);
+      const uniqueFilesAssigned = new Set(
+        assignments.flatMap(a => a.files)
+      ).size;
+      
+      alert(`成功分配完成！\n\n共對 ${uniqueFilesAssigned} 個檔案分配了 ${totalAssignments} 個標籤。`);
+    } catch (error) {
+      console.error('分配檔案時發生錯誤:', error);
+      const errorMessage = error instanceof Error ? error.message : '未知錯誤';
+      console.log('errorMessage: ', errorMessage);
+      alert(`分配檔案時發生錯誤：\n${errorMessage}\n\n請確認：\n1. .env 文件已正確設置\n`);
+    } finally {
+      setIsAssigningTags(false);
     }
   };
 
@@ -702,8 +1099,9 @@ export function OrganizerApp() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col bg-[#d8d8d8] p-4 gap-4 text-gray-900">
-      <div className="flex flex-1 gap-4 min-h-0">
+    <DndContext onDragEnd={handleTagDragEnd}>
+      <div className="h-full flex flex-col bg-[#d8d8d8] p-4 gap-4 text-gray-900">
+        <div className="flex flex-1 gap-4 min-h-0">
         <div className="flex-[1.2] flex flex-col gap-3 min-w-[520px]">
           <div className="h-[360px] rounded-2xl overflow-hidden shadow-inner border border-gray-500 bg-gradient-to-b from-gray-800 to-gray-700">
             <DesktopPreview />
@@ -798,36 +1196,57 @@ export function OrganizerApp() {
                   <Plus size={20} /> Create New Tag
                 </button>
 
-                <DndContext onDragEnd={handleTagDragEnd}>
-                  <div className="flex-1 min-h-0 overflow-y-auto">
-                    <div className="font-semibold mb-3 text-sm">All Tags ({tags.length})</div>
-                    <SortableContext items={tags.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                      <div className="flex flex-col gap-2">
-                        {tags.map((tag) => (
-                          <SortableTagItem
-                            key={tag.id}
-                            tag={tag}
-                            onToggleExpand={() => toggleTagExpand(tag.id)}
-                            onStartEdit={() => startEditingTag(tag.id, tag.name)}
-                            onDelete={() => deleteTag(tag.id)}
-                            onColorChange={(color) => updateTagColor(tag.id, color)}
-                            isEditing={editingTagId === tag.id}
-                            editValue={editingName}
-                            onEditChange={setEditingName}
-                            onSaveEdit={() => saveTagName(tag.id)}
-                          />
-                        ))}
-                      </div>
-                    </SortableContext>
-                  </div>
-                </DndContext>
+                <div className="flex-1 min-h-0 overflow-y-auto">
+                  <div className="font-semibold mb-3 text-sm">All Tags ({tags.length})</div>
+                  <SortableContext items={tags.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                    <div className="flex flex-col gap-2">
+                      {tags.map((tag) => (
+                        <SortableTagItem
+                          key={tag.id}
+                          tag={tag}
+                          onToggleExpand={() => toggleTagExpand(tag.id)}
+                          onStartEdit={() => startEditingTag(tag.id, tag.name)}
+                          onDelete={() => deleteTag(tag.id)}
+                          onColorChange={(color) => updateTagColor(tag.id, color)}
+                          isEditing={editingTagId === tag.id}
+                          editValue={editingName}
+                          onEditChange={setEditingName}
+                          onSaveEdit={() => saveTagName(tag.id)}
+                          onRemoveFile={(fileName) => removeFileFromTag(tag.id, fileName)}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </div>
 
                 <div className="flex gap-3 pt-3 border-t shrink-0">
-                  <button className="cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg bg-white hover:bg-gray-50">
-                    AI Generate Tag
+                  <button
+                    onClick={handleAIGenerateTags}
+                    disabled={isGeneratingTags || isAssigningTags}
+                    className="cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isGeneratingTags ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        <span>生成中...</span>
+                      </>
+                    ) : (
+                      'AI Generate Tag'
+                    )}
                   </button>
-                  <button className="cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg bg-white hover:bg-gray-50">
-                    AI Assign Tag
+                  <button
+                    onClick={handleAIAssignTags}
+                    disabled={isGeneratingTags || isAssigningTags}
+                    className="cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {isAssigningTags ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        <span>分配中...</span>
+                      </>
+                    ) : (
+                      'AI Assign Tag'
+                    )}
                   </button>
                 </div>
 
@@ -895,6 +1314,79 @@ export function OrganizerApp() {
           </div>
         </div>
       </div>
-    </div>
+
+      {/* API Key 輸入對話框 */}
+      {showApiKeyDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">輸入 Gemini API Key</h2>
+              <button
+                onClick={() => {
+                  setShowApiKeyDialog(false);
+                  setApiKeyInput("");
+                  setPendingAction(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              要使用 AI 功能，請輸入您的 Gemini API Key。此 Key 將僅存儲在本次會話中，刷新頁面後會清除。
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Gemini API Key
+              </label>
+              <input
+                type="password"
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleApiKeySubmit();
+                  }
+                }}
+                placeholder="請輸入您的 Gemini API Key"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowApiKeyDialog(false);
+                  setApiKeyInput("");
+                  setPendingAction(null);
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleApiKeySubmit}
+                className="flex-1 px-4 py-2 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors"
+              >
+                確認
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-4">
+              提示：您可以在{" "}
+              <a
+                href="https://makersuite.google.com/app/apikey"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-orange-400 hover:text-orange-500 underline"
+              >
+                Google AI Studio
+              </a>{" "}
+              獲取 API Key
+            </p>
+          </div>
+        </div>
+      )}
+      </div>
+    </DndContext>
   );
 }
