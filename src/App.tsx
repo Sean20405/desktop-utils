@@ -76,7 +76,19 @@ function App() {
       const iconId = activeId.replace('icon-', '');
       const item = items.find(i => i.id === iconId);
       if (item) {
-        updateItemPosition(iconId, item.x + delta.x, item.y + delta.y);
+        // Snap to grid (90x90 grid with 20px offset)
+        const gridSize = 90;
+        const offsetX = 20;
+        const offsetY = 20;
+
+        const newX = item.x + delta.x;
+        const newY = item.y + delta.y;
+
+        // Calculate snapped position
+        const snappedX = Math.round((newX - offsetX) / gridSize) * gridSize + offsetX;
+        const snappedY = Math.round((newY - offsetY) / gridSize) * gridSize + offsetY;
+
+        updateItemPosition(iconId, snappedX, snappedY);
       }
     }
   };

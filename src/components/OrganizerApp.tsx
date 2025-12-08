@@ -111,14 +111,38 @@ function DesktopPreview({ previewItems }: { previewItems: DesktopItem[] }) {
 
 export function OrganizerApp() {
   const [tab, setTab] = useState<"rule" | "tag" | "history">("rule");
-  const [rules, setRules] = useState<SimpleRule[]>([
-    { id: "rule-1", text: 'All files with tag "game" + put in "game" folder' },
-    { id: "rule-2", text: 'All files of type .txt + put in "text file" folder' },
-  ]);
-  const [savedRules, setSavedRules] = useState<SimpleRule[]>([
-    { id: "saved-1", text: 'All files with tag "game" + put in "game" folder' },
-    { id: "saved-2", text: 'All files with tag "NYCU" + put in "NYCU" folder' },
-  ]);
+
+  // Load rules from localStorage or use default
+  const [rules, setRules] = useState<SimpleRule[]>(() => {
+    const savedRules = localStorage.getItem('organizerRules');
+    if (savedRules) {
+      try {
+        return JSON.parse(savedRules);
+      } catch (e) {
+        console.error('Failed to parse saved rules:', e);
+      }
+    }
+    return [
+      { id: "rule-1", text: 'All files with tag "game" + put in "game" folder' },
+      { id: "rule-2", text: 'All files of type .txt + put in "text file" folder' },
+    ];
+  });
+
+  // Load saved rules from localStorage or use default
+  const [savedRules, setSavedRules] = useState<SimpleRule[]>(() => {
+    const savedRulesData = localStorage.getItem('organizerSavedRules');
+    if (savedRulesData) {
+      try {
+        return JSON.parse(savedRulesData);
+      } catch (e) {
+        console.error('Failed to parse saved rules data:', e);
+      }
+    }
+    return [
+      { id: "saved-1", text: 'All files with tag "game" + put in "game" folder' },
+      { id: "saved-2", text: 'All files with tag "NYCU" + put in "NYCU" folder' },
+    ];
+  });
   const [openSavedMenu, setOpenSavedMenu] = useState<string | null>(null);
   const [openRuleMenu, setOpenRuleMenu] = useState<string | null>(null);
   const savedMenuRef = useRef<HTMLDivElement | null>(null);
@@ -188,6 +212,16 @@ export function OrganizerApp() {
       setPreviewItems(items);
     }
   }, [items, isPreviewMode]);
+
+  // Save rules to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('organizerRules', JSON.stringify(rules));
+  }, [rules]);
+
+  // Save savedRules to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('organizerSavedRules', JSON.stringify(savedRules));
+  }, [savedRules]);
 
   const toggleHistoryStar = (id: string) => {
     setHistoryItems((prev) =>

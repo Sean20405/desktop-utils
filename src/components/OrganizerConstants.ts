@@ -19,7 +19,13 @@ export const subjectOptions: HierarchyNode[] = [
     },
     {
         label: "File Type",
-        children: [{ label: "PDF" }, { label: "DOCS" }, { label: "PPTX" }, { label: "..." }],
+        children: [
+            { label: "app" },
+            { label: "folder" },
+            { label: "settings" },
+            { label: "file" },
+            { label: "image" },
+        ],
     },
     { label: "f-string (e.g. hw*_report.pdf)" },
 ];
