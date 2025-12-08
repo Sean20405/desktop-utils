@@ -256,6 +256,7 @@ function DraggableFileItem({
   sourceTagId: string;
   onDelete?: () => void;
 }) {
+  const { items } = useDesktop();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `file-${sourceTagId}-${fileName}`,
     data: {
@@ -275,19 +276,44 @@ function DraggableFileItem({
     onDelete?.();
   };
 
+  // 根據檔案名稱找到對應的桌面項目
+  const desktopItem = items.find(item => item.label === fileName);
+  
+  const resolveIconUrl = (url?: string) => {
+    if (!url) return "";
+    if (url.startsWith("http")) return url;
+    const base = import.meta.env.BASE_URL || "/";
+    return `${base}${url.replace(/^\//, "")}`;
+  };
+
+  const iconSrc = desktopItem?.imageUrl ? resolveIconUrl(desktopItem.imageUrl) : null;
+
   return (
     <div
       ref={setNodeRef}
       style={{ backgroundColor: tagColor + "40", ...style }}
-      className="relative group px-3 py-1 rounded-lg text-sm cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity"
+      className="relative group px-2 py-2 rounded-lg text-sm cursor-grab active:cursor-grabbing hover:opacity-80 transition-opacity flex flex-col items-center gap-1 min-w-[60px] max-w-[80px]"
     >
-      <div {...listeners} {...attributes} className="pr-2">
-        {fileName}
+      <div {...listeners} {...attributes} className="flex flex-col items-center gap-1 w-full">
+        {iconSrc ? (
+          <img
+            src={iconSrc}
+            alt={fileName}
+            className="w-8 h-8 object-contain"
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        ) : (
+          <div className="w-8 h-8 bg-gray-300 rounded" />
+        )}
+        <span className="text-xs text-center line-clamp-2 break-words w-full">{fileName}</span>
       </div>
       {onDelete && (
         <button
           onClick={handleDelete}
-          className="absolute top-1/2 -translate-y-1/2 right-1 w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-full"
+          className="absolute top-1 right-1 w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-600 hover:bg-red-100 rounded-full"
           title="從此標籤中移除"
           onMouseDown={(e) => e.stopPropagation()}
         >
