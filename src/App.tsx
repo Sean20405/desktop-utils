@@ -5,6 +5,10 @@ import { Desktop } from './components/Desktop';
 import { WindowManager } from './components/WindowManager';
 import { Taskbar } from './components/Taskbar';
 import { SearchBar } from './components/SearchBar';
+import { UploadScreen } from './components/UploadScreen';
+import { loadDebugData } from './utils/debugUtils';
+
+const SKIP_UPLOAD = true; // Set to true to skip upload screen for debugging
 
 export interface WindowState {
   id: string;
@@ -17,10 +21,30 @@ export interface WindowState {
 }
 
 function App() {
-  const { items, updateItemPosition } = useDesktop();
+  const { items, updateItemPosition, isLoaded, setItems, setIsLoaded, setReferenceSize, referenceSize } = useDesktop();
   const [activeWindowId, setActiveWindowId] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
+    if (SKIP_UPLOAD && !isLoaded) {
+      loadDebugData().then(({ items, size }) => {
+        setItems(items);
+        setReferenceSize(size);
+        setIsLoaded(true);
+      });
+    }
+  }, [isLoaded, setItems, setReferenceSize, setIsLoaded]);
+
   const [windows, setWindows] = useState<WindowState[]>([
     {
       id: 'organizer',
@@ -54,6 +78,18 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  if (!isLoaded) {
+    return (
+      <UploadScreen
+        onDataLoaded={(newItems, size) => {
+          setItems(newItems);
+          setReferenceSize(size);
+          setIsLoaded(true);
+        }}
+      />
+    );
+  }
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event;
     const activeId = String(active.id);
@@ -76,13 +112,20 @@ function App() {
       const iconId = activeId.replace('icon-', '');
       const item = items.find(i => i.id === iconId);
       if (item) {
+        const TASKBAR_HEIGHT = 48;
+
+        // Calculate responsive scaling ratio
+        const ratioX = windowSize.width / referenceSize.width;
+        const ratioY = Math.max(0, windowSize.height - TASKBAR_HEIGHT) / Math.max(1, referenceSize.height - TASKBAR_HEIGHT);
+
+        // Apply delta with scaling
+        const newX = item.x + delta.x / ratioX;
+        const newY = item.y + delta.y / ratioY;
+
         // Snap to grid (90x90 grid with 20px offset)
         const gridSize = 90;
         const offsetX = 20;
         const offsetY = 20;
-
-        const newX = item.x + delta.x;
-        const newY = item.y + delta.y;
 
         // Calculate snapped position
         const snappedX = Math.round((newX - offsetX) / gridSize) * gridSize + offsetX;

@@ -1,0 +1,120 @@
+﻿[0] 本機
+    位置: (0, 5)
+    路徑: 找不到路徑
+    圖示: 無
+-----------------------------------
+[1] 控制台
+    位置: (0, 127)
+    路徑: 找不到路徑
+    圖示: 無
+-----------------------------------
+[2] 資源回收筒
+    位置: (0, 249)
+    路徑: 找不到路徑
+    圖示: 無
+-----------------------------------
+[3] 個人 - Edge
+    位置: (0, 371)
+    路徑: C:\Users\Sean\Desktop\個人 - Edge.lnk
+    圖示: 已儲存 (Icon file: icon_3_個人 - Edge.png)
+-----------------------------------
+[4] Firefox
+    位置: (0, 493)
+    路徑: C:\Users\Public\Desktop\Firefox.lnk
+    圖示: 已儲存 (Icon file: icon_4_Firefox.png)
+-----------------------------------
+[5] Comet
+    位置: (0, 615)
+    路徑: C:\Users\Sean\Desktop\Comet.lnk
+    圖示: 已儲存 (Icon file: icon_5_Comet.png)
+-----------------------------------
+[6] LINE
+    位置: (0, 737)
+    路徑: C:\Users\Sean\Desktop\LINE.lnk
+    圖示: 已儲存 (Icon file: icon_6_LINE.png)
+-----------------------------------
+[7] Discord
+    位置: (0, 859)
+    路徑: C:\Users\Sean\Desktop\Discord.lnk
+    圖示: 已儲存 (Icon file: icon_7_Discord.png)
+-----------------------------------
+[8] Telegram
+    位置: (95, 5)
+    路徑: C:\Users\Sean\Desktop\Telegram.lnk
+    圖示: 已儲存 (Icon file: icon_8_Telegram.png)
+-----------------------------------
+[9] Mattermost
+    位置: (95, 127)
+    路徑: C:\Users\Sean\Desktop\Mattermost.lnk
+    圖示: 已儲存 (Icon file: icon_9_Mattermost.png)
+-----------------------------------
+[10] Slack
+    位置: (95, 249)
+    路徑: C:\Users\Sean\Desktop\Slack.lnk
+    圖示: 已儲存 (Icon file: icon_10_Slack.png)
+-----------------------------------
+[11] Visual Studio Code
+    位置: (95, 371)
+    路徑: C:\Users\Sean\Desktop\Visual Studio Code.lnk
+    圖示: 已儲存 (Icon file: icon_11_Visual Studio Code.png)
+-----------------------------------
+[12] Obsidian
+    位置: (95, 493)
+    路徑: C:\Users\Sean\Desktop\Obsidian.lnk
+    圖示: 已儲存 (Icon file: icon_12_Obsidian.png)
+-----------------------------------
+[13] Windhawk
+    位置: (95, 615)
+    路徑: C:\Users\Public\Desktop\Windhawk.lnk
+    圖示: 已儲存 (Icon file: icon_13_Windhawk.png)
+-----------------------------------
+[14] CodeBlocks
+    位置: (95, 737)
+    路徑: C:\Users\Sean\Desktop\CodeBlocks.lnk
+    圖示: 已儲存 (Icon file: icon_14_CodeBlocks.png)
+-----------------------------------
+[15] Oracle VirtualBox
+    位置: (95, 859)
+    路徑: C:\Users\Public\Desktop\Oracle VirtualBox.lnk
+    圖示: 已儲存 (Icon file: icon_15_Oracle VirtualBox.png)
+-----------------------------------
+[16] Docker Desktop
+    位置: (190, 5)
+    路徑: C:\Users\Sean\Desktop\Docker Desktop.lnk
+    圖示: 已儲存 (Icon file: icon_16_Docker Desktop.png)
+-----------------------------------
+[17] Postman
+    位置: (190, 127)
+    路徑: C:\Users\Sean\Desktop\Postman.lnk
+    圖示: 已儲存 (Icon file: icon_17_Postman.png)
+-----------------------------------
+[18] OBS Studio
+    位置: (190, 249)
+    路徑: C:\Users\Public\Desktop\OBS Studio.lnk
+    圖示: 已儲存 (Icon file: icon_18_OBS Studio.png)
+-----------------------------------
+[19] Audacity
+    位置: (190, 371)
+    路徑: C:\Users\Public\Desktop\Audacity.lnk
+    圖示: 已儲存 (Icon file: icon_19_Audacity.png)
+-----------------------------------
+[20] Netflix
+    位置: (190, 493)
+    路徑: C:\Users\Sean\Desktop\Netflix.lnk
+    圖示: 已儲存 (Icon file: icon_20_Netflix.png)
+-----------------------------------
+[21] 英雄聯盟
+    位置: (190, 615)
+    路徑: C:\Users\Public\Desktop\英雄聯盟.lnk
+    圖示: 已儲存 (Icon file: icon_21_英雄聯盟.png)
+-----------------------------------
+[22] Autodesk Fusion
+    位置: (190, 737)
+    路徑: C:\Users\Sean\Desktop\Autodesk Fusion.lnk
+    圖示: 已儲存 (Icon file: icon_22_Autodesk Fusion.png)
+-----------------------------------
+[23] ATOM Cura V4.9.1
+    位置: (190, 859)
+    路徑: C:\Users\Sean\Desktop\ATOM Cura V4.9.1.lnk
+    圖示: 已儲存 (Icon file: icon_23_ATOM Cura V4.9.1.png)
+-----------------------------------
