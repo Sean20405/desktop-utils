@@ -4,7 +4,7 @@
  */
 export const getAssetUrl = (path: string | undefined): string => {
   if (!path) return '';
-  if (path.startsWith('http') || path.startsWith('data:')) return path;
+  if (path.startsWith('http') || path.startsWith('data:') || path.startsWith('blob:')) return path;
   
   const baseUrl = import.meta.env.BASE_URL;
   const cleanPath = path.startsWith('/') ? path.slice(1) : path;

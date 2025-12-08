@@ -1,6 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { clsx } from 'clsx';
+import { Monitor } from 'lucide-react';
 import { getAssetUrl } from '../utils/assetUtils';
 
 interface DesktopIconProps {
@@ -10,15 +11,19 @@ interface DesktopIconProps {
   onClick: () => void;
   position: { x: number; y: number };
   isVisible?: boolean;
+  scale?: number;
 }
 
-export function DesktopIcon({ id, label, imageUrl, onClick, position, isVisible = true }: DesktopIconProps) {
+export function DesktopIcon({ id, label, imageUrl, onClick, position, isVisible = true, scale = 1 }: DesktopIconProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `icon-${id}`,
   });
 
+  const transformStr = transform ? CSS.Translate.toString(transform) : '';
+
   const style = {
-    transform: CSS.Translate.toString(transform),
+    transform: transformStr + ` scale(${scale})`,
+    transformOrigin: 'top left',
     left: position.x,
     top: position.y,
     position: 'absolute' as const,
@@ -35,7 +40,7 @@ export function DesktopIcon({ id, label, imageUrl, onClick, position, isVisible 
       {...attributes}
       onClick={onClick}
       className={clsx(
-        "flex flex-col items-center gap-1 p-2 w-24 rounded border border-transparent hover:bg-white/5 hover:backdrop-blur-[2px] hover:border-white/10 cursor-default group transition-colors duration-100",
+        "flex flex-col items-center gap-1 p-1 w-20 rounded border border-transparent hover:bg-white/5 hover:backdrop-blur-[2px] hover:border-white/10 cursor-default group transition-colors duration-100",
         isDragging && "opacity-50"
       )}
     >
@@ -43,7 +48,9 @@ export function DesktopIcon({ id, label, imageUrl, onClick, position, isVisible 
         {imageUrl ? (
           <img src={getAssetUrl(imageUrl)} alt={label} className="w-full h-full object-contain pointer-events-none" />
         ) : (
-          <div className="w-full h-full bg-gray-400 rounded-lg" />
+          <div className="w-full h-full bg-gray-400/50 rounded-lg flex items-center justify-center backdrop-blur-sm">
+            <Monitor className="w-8 h-8 text-white/80" />
+          </div>
         )}
       </div>
       <span className="text-white text-xs font-normal drop-shadow-md text-center select-none px-1 rounded-sm line-clamp-2" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>

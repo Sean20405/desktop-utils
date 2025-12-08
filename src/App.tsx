@@ -5,6 +5,7 @@ import { Desktop } from './components/Desktop';
 import { WindowManager } from './components/WindowManager';
 import { Taskbar } from './components/Taskbar';
 import { SearchBar } from './components/SearchBar';
+import { UploadScreen } from './components/UploadScreen';
 
 export interface WindowState {
   id: string;
@@ -17,10 +18,20 @@ export interface WindowState {
 }
 
 function App() {
-  const { items, updateItemPosition } = useDesktop();
+  const { items, updateItemPosition, isLoaded, setItems, setIsLoaded, setReferenceSize, referenceSize } = useDesktop();
   const [activeWindowId, setActiveWindowId] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [windows, setWindows] = useState<WindowState[]>([
     {
       id: 'organizer',
@@ -54,6 +65,18 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  if (!isLoaded) {
+    return (
+      <UploadScreen 
+        onDataLoaded={(newItems, size) => {
+          setItems(newItems);
+          setReferenceSize(size);
+          setIsLoaded(true);
+        }} 
+      />
+    );
+  }
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, delta } = event;
     const activeId = String(active.id);
@@ -76,7 +99,12 @@ function App() {
       const iconId = activeId.replace('icon-', '');
       const item = items.find(i => i.id === iconId);
       if (item) {
-        updateItemPosition(iconId, item.x + delta.x, item.y + delta.y);
+        const TASKBAR_HEIGHT = 48;
+        
+        const ratioX = windowSize.width / referenceSize.width;
+        const ratioY = Math.max(0, windowSize.height - TASKBAR_HEIGHT) / Math.max(1, referenceSize.height - TASKBAR_HEIGHT);
+
+        updateItemPosition(iconId, item.x + delta.x / ratioX, item.y + delta.y / ratioY);
       }
     }
   };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DesktopIcon } from './DesktopIcon';
 import { useDesktop } from '../context/DesktopContext';
 import { getAssetUrl } from '../utils/assetUtils';
@@ -10,8 +10,27 @@ interface DesktopProps {
 }
 
 export function Desktop({ onOpenWindow, searchQuery }: DesktopProps) {
-  const { items, background, setItems } = useDesktop();
+  const { items, background, setItems, referenceSize } = useDesktop();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowSize({ width: window.innerWidth, height: window.innerHeight });
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const ICON_HEIGHT = 110;
+  const TASKBAR_HEIGHT = 48;
+
+  // Calculate ratios based on available desktop area
+  const ratioX = windowSize.width / referenceSize.width;
+  const ratioY = Math.max(0, windowSize.height - TASKBAR_HEIGHT) / Math.max(1, referenceSize.height - TASKBAR_HEIGHT);
+  
+  // Keep icons at original size
+  const iconScale = 1;
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -24,7 +43,7 @@ export function Desktop({ onOpenWindow, searchQuery }: DesktopProps) {
     const startY = 20;
     const gapX = 100;
     const gapY = 110;
-    const maxHeight = window.innerHeight - 100; // Leave space for taskbar
+    const maxHeight = referenceSize.height - TASKBAR_HEIGHT - ICON_HEIGHT;
 
     let currentX = startX;
     let currentY = startY;
@@ -51,7 +70,7 @@ export function Desktop({ onOpenWindow, searchQuery }: DesktopProps) {
     const startY = 20;
     const gapX = 100;
     const gapY = 110;
-    const maxHeight = window.innerHeight - 100;
+    const maxHeight = referenceSize.height - TASKBAR_HEIGHT - ICON_HEIGHT;
 
     let currentX = startX;
     let currentY = startY;
@@ -92,7 +111,8 @@ export function Desktop({ onOpenWindow, searchQuery }: DesktopProps) {
                 label={item.label} 
                 imageUrl={item.imageUrl}
                 onClick={() => onOpenWindow(item.id)}
-                position={{ x: item.x, y: item.y }}
+                position={{ x: item.x * ratioX, y: item.y * ratioY }}
+                scale={iconScale}
                 isVisible={isMatch}
               />
             </div>
