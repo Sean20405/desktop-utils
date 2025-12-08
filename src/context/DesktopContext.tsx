@@ -10,18 +10,29 @@ export interface DesktopItem {
   imageUrl?: string;
 }
 
+export interface Size {
+  width: number;
+  height: number;
+}
+
 interface DesktopContextType {
   items: DesktopItem[];
   background: string;
+  isLoaded: boolean;
+  referenceSize: Size;
   setItems: React.Dispatch<React.SetStateAction<DesktopItem[]>>;
+  setIsLoaded: React.Dispatch<React.SetStateAction<boolean>>;
+  setReferenceSize: React.Dispatch<React.SetStateAction<Size>>;
   updateItemPosition: (id: string, x: number, y: number) => void;
 }
 
 const DesktopContext = createContext<DesktopContextType | undefined>(undefined);
 
 export function DesktopProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<DesktopItem[]>(initialData.icons);
+  const [items, setItems] = useState<DesktopItem[]>([]);
   const [background] = useState<string>(initialData.background);
+  const [isLoaded, setIsLoaded] = useState(false);
+  const [referenceSize, setReferenceSize] = useState<Size>({ width: 1920, height: 1080 });
 
   const updateItemPosition = (id: string, x: number, y: number) => {
     setItems(prev => prev.map(item => 
@@ -30,7 +41,16 @@ export function DesktopProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <DesktopContext.Provider value={{ items, background, setItems, updateItemPosition }}>
+    <DesktopContext.Provider value={{ 
+      items, 
+      background, 
+      isLoaded, 
+      referenceSize,
+      setItems, 
+      setIsLoaded, 
+      setReferenceSize,
+      updateItemPosition 
+    }}>
       {children}
     </DesktopContext.Provider>
   );
