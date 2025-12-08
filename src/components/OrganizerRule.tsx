@@ -177,15 +177,17 @@ function SortableRuleItem({
     );
 }
 
-// Rules Panel Component
+/// Rules Panel Component
 type RulesPanelProps = {
     rules: SimpleRule[];
     selectedSubject?: string;
     selectedAction?: string;
+    folderName?: string;
     openRuleMenu: string | null;
     ruleMenuRef: React.RefObject<HTMLDivElement | null>;
     onSelectSubject: (value: string) => void;
     onSelectAction: (value: string) => void;
+    onFolderNameChange: (name: string) => void;
     onAddRule: () => void;
     onSaveRule: () => void;
     onEditRule: (id: string) => void;
@@ -200,10 +202,12 @@ export function RulesPanel({
     rules,
     selectedSubject,
     selectedAction,
+    folderName,
     openRuleMenu,
     ruleMenuRef,
     onSelectSubject,
     onSelectAction,
+    onFolderNameChange,
     onAddRule,
     onSaveRule,
     onEditRule,
@@ -237,6 +241,15 @@ export function RulesPanel({
                     onSelect={onSelectAction}
                     align="right"
                 />
+                {selectedAction === 'Put in "__" folder named' && (
+                    <input
+                        type="text"
+                        placeholder="Folder name"
+                        value={folderName || ''}
+                        onChange={(e) => onFolderNameChange(e.target.value)}
+                        className="flex-1 px-3 py-2 rounded-lg border border-gray-300 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                )}
                 <button
                     onClick={onAddRule}
                     className="cursor-pointer active:scale-95 w-12 h-10 rounded-lg bg-white border border-gray-300 shadow-inner flex items-center justify-center hover:bg-gray-100"

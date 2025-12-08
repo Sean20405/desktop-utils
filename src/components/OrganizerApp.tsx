@@ -149,6 +149,7 @@ export function OrganizerApp() {
   const ruleMenuRef = useRef<HTMLDivElement | null>(null);
   const [subjectSelection, setSubjectSelection] = useState<string>("");
   const [actionSelection, setActionSelection] = useState<string>("");
+  const [folderName, setFolderName] = useState<string>("");
   const [historyItems, setHistoryItems] = useState<HistoryEntry[]>([
     {
       id: "h-1",
@@ -235,10 +236,22 @@ export function OrganizerApp() {
 
   const handleAddRule = () => {
     if (!subjectSelection || !actionSelection) return;
-    const text = `${subjectSelection} + ${actionSelection}`;
+
+    // Build the complete action text with folder name if needed
+    let finalAction = actionSelection;
+    if (actionSelection === 'Put in "__" folder named') {
+      if (!folderName.trim()) {
+        alert("請輸入資料夾名稱");
+        return;
+      }
+      finalAction = `Put in "${folderName.trim()}" folder`;
+    }
+
+    const text = `${subjectSelection} + ${finalAction}`;
     setRules((prev) => [...prev, { id: `rule-${Date.now()}`, text }]);
     setSubjectSelection("");
     setActionSelection("");
+    setFolderName("");
   };
 
   const handleRemoveRule = (id: string) => {
@@ -675,10 +688,12 @@ export function OrganizerApp() {
       rules={rules}
       selectedSubject={subjectSelection}
       selectedAction={actionSelection}
+      folderName={folderName}
       openRuleMenu={openRuleMenu}
       ruleMenuRef={ruleMenuRef}
       onSelectSubject={setSubjectSelection}
       onSelectAction={setActionSelection}
+      onFolderNameChange={setFolderName}
       onAddRule={handleAddRule}
       onSaveRule={handleSaveRule}
       onEditRule={handleEditRule}

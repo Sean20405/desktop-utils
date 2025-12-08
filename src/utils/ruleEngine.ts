@@ -18,7 +18,30 @@ export function executeRule(
 
     // Step 2: Execute action on filtered items
     if (action === "Sort by name") {
-        return sortByName(filteredItems, items);
+        return sortItems(filteredItems, items, 'name');
+    }
+
+    if (action === "Sort by last accessed time") {
+        return sortItems(filteredItems, items, 'lastAccessed');
+    }
+
+    if (action === "Sort by last modified time") {
+        return sortItems(filteredItems, items, 'lastModified');
+    }
+
+    if (action === "Sort by type") {
+        return sortItems(filteredItems, items, 'type');
+    }
+
+    if (action === "Sort by file size") {
+        return sortItems(filteredItems, items, 'fileSize');
+    }
+
+    // Handle "Put in folder" action
+    // Extract folder name from action text like 'Put in "MyFolder" folder'
+    if (action.startsWith('Put in "') && action.endsWith('" folder')) {
+        const folderName = action.slice(8, -8); // Extract text between quotes (fixed: was 9)
+        return putInFolder(filteredItems, items, folderName);
     }
 
     // Add more actions here as needed
@@ -52,16 +75,41 @@ function filterByFileType(items: DesktopItem[], fileType: string): DesktopItem[]
 }
 
 /**
- * Sort items by name and arrange in grid, avoiding overlaps with existing items
+ * Sort items by specified field and arrange in grid, avoiding overlaps with existing items
  */
-function sortByName(
+type SortField = 'name' | 'lastAccessed' | 'lastModified' | 'type' | 'fileSize';
+
+function sortItems(
     targetItems: DesktopItem[],
-    allItems: DesktopItem[]
+    allItems: DesktopItem[],
+    sortBy: SortField
 ): RuleExecutionResult {
-    // Sort only the target items alphabetically
-    const sortedTargetItems = [...targetItems].sort((a, b) =>
-        a.label.localeCompare(b.label)
-    );
+    // Sort the target items based on the specified field
+    const sortedTargetItems = [...targetItems].sort((a, b) => {
+        switch (sortBy) {
+            case 'name':
+                return a.label.localeCompare(b.label);
+
+            case 'lastAccessed':
+            case 'lastModified': {
+                const dateA = new Date(a[sortBy] || 0).getTime();
+                const dateB = new Date(b[sortBy] || 0).getTime();
+                return dateB - dateA; // Newest first
+            }
+
+            case 'type':
+                return a.type.localeCompare(b.type);
+
+            case 'fileSize': {
+                const sizeA = a.fileSize || 0;
+                const sizeB = b.fileSize || 0;
+                return sizeB - sizeA; // Largest first
+            }
+
+            default:
+                return 0;
+        }
+    });
 
     // Grid configuration
     const startX = 20;
@@ -131,9 +179,62 @@ function sortByName(
 
     const resultItems = [...arrangedTargetItems, ...nonTargetItems];
 
+    // Generate description based on sort field
+    const descriptions: Record<SortField, string> = {
+        name: 'alphabetically by name',
+        lastAccessed: 'by last accessed time',
+        lastModified: 'by last modified time',
+        type: 'by type',
+        fileSize: 'by file size'
+    };
+
     return {
         items: resultItems,
-        description: `Sorted ${arrangedTargetItems.length} files alphabetically by name`,
+        description: `Sorted ${arrangedTargetItems.length} files ${descriptions[sortBy]}`,
+    };
+}
+
+/**
+ * Put files into a folder (creates folder if it doesn't exist, hides files)
+ */
+function putInFolder(
+    targetItems: DesktopItem[],
+    allItems: DesktopItem[],
+    folderName: string
+): RuleExecutionResult {
+    // Check if folder already exists
+    let folderItem = allItems.find(
+        item => item.type === 'folder' && item.label === folderName
+    );
+
+    // If folder doesn't exist, create it
+    if (!folderItem) {
+        folderItem = {
+            id: `folder-${Date.now()}`,
+            label: folderName,
+            type: 'folder',
+            x: 20,
+            y: 20,
+            imageUrl: '/icons/documents.svg',
+            lastAccessed: new Date().toISOString(),
+            lastModified: new Date().toISOString(),
+            createdTime: new Date().toISOString(),
+            fileSize: 0,
+        };
+    }
+
+    // Remove target items from the desktop (hide them)
+    const nonTargetItems = allItems.filter(
+        item => !targetItems.some(target => target.id === item.id)
+    );
+
+    // Ensure folder is in the result
+    const folderExists = nonTargetItems.some(item => item.id === folderItem.id);
+    const resultItems = folderExists ? nonTargetItems : [...nonTargetItems, folderItem];
+
+    return {
+        items: resultItems,
+        description: `Put ${targetItems.length} file(s) into "${folderName}" folder`,
     };
 }
 

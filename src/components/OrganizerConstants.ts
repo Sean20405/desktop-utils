@@ -32,6 +32,10 @@ export const subjectOptions: HierarchyNode[] = [
 
 export const actionOptions: HierarchyNode[] = [
     { label: "Sort by name" },
+    { label: "Sort by last accessed time" },
+    { label: "Sort by last modified time" },
+    { label: "Sort by type" },
+    { label: "Sort by file size" },
     { label: 'Put in "__" folder named' },
     {
         label: "Sort by __ starting {x,y} in __ direction (push away obstacles)",
