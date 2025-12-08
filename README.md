@@ -34,6 +34,15 @@ npm install
    - if there is no known API key, a window will appear and you can enter your api key
    - API key will only store in session. If click F5, the key will be deleted
 
+4. Get your desktop information
+- Run `GetDesktopInfo.exe`, it will extract your current desktop layout along with the icon image
+- Wrap the image and `Desktop_Icons_Info.txt` into a folder (reference: [src/data/desktop_icon_info](src/data/desktop_icon_info))
+- Set the variable `SKIP_UPLOAD` to false to enable uploading, otherwise it will use the default data in [src/data/desktop_icon_info](src/data/desktop_icon_info)
+- Upload the folder, then you can see your desktop layout showing in the website
+
+>[!Note]
+> For more detail about `GetDesktopInfo.exe`, please see [DesktopIconTool branch](https://github.com/Sean20405/desktop-utils/tree/DesktopIconTool)
+
 ### Development
 
 To run the application in development mode:
