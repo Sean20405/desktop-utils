@@ -74,9 +74,57 @@ export function getActionOptionsWithFolders(folders: string[]): HierarchyNode[] 
 }
 
 /**
- * Generate dynamic subject options based on actual tags
+ * Extract unique file extensions from desktop items
  */
-export function getSubjectOptionsWithTags(tags: Array<{ name: string }>): HierarchyNode[] {
+function extractFileExtensions(items: Array<{ label: string; type: string; path?: string }>): string[] {
+    const extensions = new Set<string>();
+
+    items.forEach(item => {
+        // Use path if available, fallback to label
+        const source = item.path || item.label;
+        const lastDotIndex = source.lastIndexOf('.');
+
+        // Extract extension if there is a dot and it's not at the start or end
+        if (lastDotIndex > 0 && lastDotIndex < source.length - 1) {
+            const extension = source.substring(lastDotIndex).toLowerCase(); // Include the dot
+
+            // Filter out invalid extensions:
+            // - Must have at least 2 characters after the dot
+            // - Must not be purely numeric (like .1, .2, .10)
+            const extWithoutDot = extension.substring(1);
+            if (extWithoutDot.length >= 2 && !/^\d+$/.test(extWithoutDot)) {
+                extensions.add(extension);
+            }
+        }
+    });
+
+    // Convert to array and sort alphabetically
+    return Array.from(extensions).sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * Generate dynamic subject options based on actual tags and file types
+ */
+export function getSubjectOptionsWithTags(
+    tags: Array<{ name: string }>,
+    items: Array<{ label: string; type: string; path?: string }>
+): HierarchyNode[] {
+    // Extract actual file extensions from desktop items
+    const fileExtensions = extractFileExtensions(items);
+
+    // Create file type children: extensions + folder indicator
+    const fileTypeChildren: HierarchyNode[] = [];
+
+    // Add dynamic extensions first
+    if (fileExtensions.length > 0) {
+        fileExtensions.forEach(ext => {
+            fileTypeChildren.push({ label: ext });
+        });
+    }
+
+    // Add folder indicator
+    fileTypeChildren.push({ label: "/" });
+
     return [
         { label: "All files" },
         {
@@ -95,14 +143,9 @@ export function getSubjectOptionsWithTags(tags: Array<{ name: string }>): Hierar
         },
         {
             label: "File Type",
-            children: [
-                { label: "app" },
-                { label: "folder" },
-                { label: "settings" },
-                { label: "file" },
-                { label: "image" },
-            ],
+            children: fileTypeChildren,
         },
         { label: "f-string" },
     ];
 }
+

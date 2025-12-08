@@ -84,6 +84,12 @@ function DesktopPreview({ previewItems, isPreviewMode }: { previewItems: Desktop
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // Read initial size immediately
+    const initialRect = containerRef.current.getBoundingClientRect();
+    if (initialRect.width > 0 && initialRect.height > 0) {
+      setContainerSize({ width: initialRect.width, height: initialRect.height });
+    }
+
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const { width, height } = entry.contentRect;
@@ -805,10 +811,10 @@ export function OrganizerApp() {
     }
   };
 
-  // Generate dynamic subject options based on actual tags
+  // Generate dynamic subject options based on actual tags and file types
   const dynamicSubjectOptions = useMemo(() => {
-    return getSubjectOptionsWithTags(tags);
-  }, [tags]);
+    return getSubjectOptionsWithTags(tags, items);
+  }, [tags, items]);
 
   // Generate dynamic action options based on user folders
   const dynamicActionOptions = useMemo(() => {

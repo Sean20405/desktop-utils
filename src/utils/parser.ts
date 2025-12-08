@@ -113,6 +113,13 @@ export function parseDesktopInfo(
       continue;
     }
 
+    // Match Path: ...
+    const pathMatch = trimmedLine.match(/^路徑: (.+)$/);
+    if (pathMatch) {
+      currentItem.path = pathMatch[1].trim();
+      continue;
+    }
+
     // Match Icon: ... (Icon file: filename)
     const iconMatch = trimmedLine.match(/^圖示: .*\(Icon file: (.+)\)/);
     if (iconMatch) {

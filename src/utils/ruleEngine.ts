@@ -111,9 +111,39 @@ function filterItemsBySubject(
 }
 
 /**
- * Filter items by file type
+ * Extract file extension from a desktop item using path or label
+ */
+function getFileExtension(item: DesktopItem): string {
+    // Use path if available, fallback to label
+    const source = item.path || item.label;
+    const lastDotIndex = source.lastIndexOf('.');
+    if (lastDotIndex > 0 && lastDotIndex < source.length - 1) {
+        return source.substring(lastDotIndex); // Include the dot, e.g., ".jpg"
+    }
+    return '';
+}
+
+/**
+ * Filter items by file type (handles both extensions like ".jpg" and types like "app")
  */
 function filterByFileType(items: DesktopItem[], fileType: string): DesktopItem[] {
+    // Check if fileType is "/" (folder indicator)
+    if (fileType === "/") {
+        return items.filter(item => item.type === "folder");
+    }
+
+    // Check if fileType is an extension (starts with a dot)
+    if (fileType.startsWith('.')) {
+        // Filter by file extension from path or label
+        // IMPORTANT: Never filter folders by extension, even if folder name contains a dot
+        return items.filter(item => {
+            if (item.type === 'folder') return false;  // Folders are excluded
+            const extension = getFileExtension(item);
+            return extension.toLowerCase() === fileType.toLowerCase();
+        });
+    }
+
+    // Otherwise, filter by the type field (app, folder, settings, file, image, etc.)
     return items.filter(item => item.type === fileType);
 }
 
@@ -288,6 +318,31 @@ function sortItems(
 }
 
 /**
+ * Find first available grid position
+ */
+function findFirstAvailablePosition(allItems: DesktopItem[]): { x: number; y: number } {
+    const iconsPerRow = 10;
+    const occupiedPositions = new Set(
+        allItems.map(item => `${item.x},${item.y}`)
+    );
+
+    for (let row = 0; row < 100; row++) {
+        for (let col = 0; col < iconsPerRow; col++) {
+            const x = GRID_START_X + col * GRID_WIDTH;
+            const y = GRID_START_Y + row * GRID_HEIGHT;
+            const posKey = `${x},${y}`;
+
+            if (!occupiedPositions.has(posKey)) {
+                return { x, y };
+            }
+        }
+    }
+
+    // Fallback to bottom of grid
+    return { x: GRID_START_X, y: GRID_START_Y + 100 * GRID_HEIGHT };
+}
+
+/**
  * Put files into a folder
  */
 function putInFolder(
@@ -295,37 +350,62 @@ function putInFolder(
     allItems: DesktopItem[],
     folderName: string
 ): RuleExecutionResult {
+    console.log(`[putInFolder] Processing folder: "${folderName}"`);
+    console.log(`[putInFolder] Total items before: ${allItems.length}, Target items: ${targetItems.length}`);
+
     let folderItem = allItems.find(
         item => item.type === 'folder' && item.label === folderName
     );
 
+    console.log(`[putInFolder] Folder "${folderName}" exists:`, !!folderItem);
+
+    // Calculate non-target items first (items that will remain after this operation)
+    const nonTargetItems = allItems.filter(
+        item => !targetItems.some(target => target.id === item.id)
+    );
+
+    console.log(`[putInFolder] Non-target items: ${nonTargetItems.length}`);
+    console.log(`[putInFolder] Non-target folders:`, nonTargetItems.filter(i => i.type === 'folder').map(i => i.label));
+
     if (!folderItem) {
+        // When finding position for new folder, exclude target items
+        // because they will be removed/moved and shouldn't block placement
+        const position = findFirstAvailablePosition(nonTargetItems);
         folderItem = {
             id: `folder-${Date.now()}`,
             label: folderName,
             type: 'folder',
-            x: 20,
-            y: 20,
+            x: position.x,
+            y: position.y,
             imageUrl: '/icons/documents.svg',
             lastAccessed: new Date().toISOString(),
             lastModified: new Date().toISOString(),
             createdTime: new Date().toISOString(),
             fileSize: 0,
         };
+        console.log(`[putInFolder] Created new folder at (${position.x}, ${position.y})`);
     }
 
-    const nonTargetItems = allItems.filter(
-        item => !targetItems.some(target => target.id === item.id)
-    );
+    // Build result: keep all non-target items and ensure the folder is included
+    // Start with non-target items
+    const resultItems = [...nonTargetItems];
 
-    const folderExists = nonTargetItems.some(item => item.id === folderItem.id);
-    const resultItems = folderExists ? nonTargetItems : [...nonTargetItems, folderItem];
+    // Always ensure the destination folder is in the result
+    // Check if folder is already in nonTargetItems (by id)
+    const folderAlreadyIncluded = nonTargetItems.some(item => item.id === folderItem.id);
+    if (!folderAlreadyIncluded) {
+        resultItems.push(folderItem);
+    }
+
+    console.log(`[putInFolder] Result: ${resultItems.length} items total`);
+    console.log(`[putInFolder] Result folders:`, resultItems.filter(i => i.type === 'folder').map(i => i.label));
 
     return {
         items: resultItems,
         description: `Put ${targetItems.length} file(s) into "${folderName}" folder`,
     };
 }
+
 
 /**
  * Parse a rule text to extract subject and action

@@ -8,6 +8,7 @@ export interface DesktopItem {
   x: number;
   y: number;
   imageUrl?: string;
+  path?: string;
   lastAccessed?: string; // ISO 8601 date string
   lastModified?: string; // ISO 8601 date string
   createdTime?: string;  // ISO 8601 date string
@@ -45,15 +46,15 @@ export function DesktopProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <DesktopContext.Provider value={{ 
-      items, 
-      background, 
-      isLoaded, 
+    <DesktopContext.Provider value={{
+      items,
+      background,
+      isLoaded,
       referenceSize,
-      setItems, 
-      setIsLoaded, 
+      setItems,
+      setIsLoaded,
       setReferenceSize,
-      updateItemPosition 
+      updateItemPosition
     }}>
       {children}
     </DesktopContext.Provider>
