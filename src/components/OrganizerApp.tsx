@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, GripVertical, MoreVertical, Star, Trash2, X, Plus } from "lucide-react";
+import { ChevronDown, GripVertical, MoreVertical, Star, Trash2, X, Plus, Monitor } from "lucide-react";
 import { useDesktop } from "../context/DesktopContext";
 import { DndContext, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, useSortable, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
@@ -48,28 +48,62 @@ const actionOptions: HierarchyNode[] = [
 
 function DesktopPreview() {
   const { items, background } = useDesktop();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        setContainerSize({ width, height });
+      }
+    });
+
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const resolveIconUrl = (url?: string) => {
     if (!url) return "";
-    if (url.startsWith("http")) return url;
+    if (url.startsWith("http") || url.startsWith("data:") || url.startsWith("blob:")) return url;
+    
     const base = import.meta.env.BASE_URL || "/";
+    
+    // Avoid double-prefixing if the path already contains the base URL
+    if (url.startsWith(base)) {
+      return url;
+    }
+
     return `${base}${url.replace(/^\//, "")}`;
   };
 
   // Keep preview proportional to a 1920x1080 desktop but scaled down without stretching layout.
   const { scale, previewWidth, previewHeight } = useMemo(() => {
     const baseWidth = 1920;
-    const baseHeight = 1080;
-    const scale = 0.32;
+    const baseHeight = 1080 - 48;
+    
+    if (containerSize.width === 0 || containerSize.height === 0) {
+      return { scale: 0.32, previewWidth: baseWidth * 0.32, previewHeight: baseHeight * 0.32 };
+    }
+
+    const availableWidth = containerSize.width;
+    const availableHeight = containerSize.height;
+
+    const scaleX = availableWidth / baseWidth;
+    const scaleY = availableHeight / baseHeight;
+    const scale = Math.min(scaleX, scaleY);
+
     return {
       scale,
       previewWidth: baseWidth * scale,
       previewHeight: baseHeight * scale,
     };
-  }, []);
+  }, [containerSize]);
 
   return (
-    <div className="w-full h-full relative bg-slate-900/30 border border-gray-500 rounded-xl overflow-hidden shadow-inner flex items-center justify-center">
+    <div ref={containerRef} className="w-full h-full relative border border-gray-500 rounded-xl overflow-hidden shadow-inner flex items-center justify-center">
       <div
         className="relative rounded-lg overflow-hidden shadow-lg ring-1 ring-white/10"
         style={{
@@ -77,7 +111,7 @@ function DesktopPreview() {
           height: previewHeight,
           backgroundImage: `url(${background})`,
           backgroundSize: "cover",
-          backgroundPosition: "center",
+          backgroundPosition: "top center",
           backgroundRepeat: "no-repeat",
         }}
       >
@@ -86,7 +120,7 @@ function DesktopPreview() {
           return (
             <div
               key={item.id}
-              className="absolute"
+              className="absolute flex flex-col items-center gap-1 p-1 w-20"
               style={{
                 left: item.x * scale,
                 top: item.y * scale,
@@ -94,22 +128,29 @@ function DesktopPreview() {
                 transformOrigin: "top left",
               }}
             >
-              <div className="w-16 h-16 flex items-center justify-center bg-white/25 backdrop-blur rounded-lg border border-white/30 shadow-md">
+              <div className="w-12 h-12 flex items-center justify-center">
                 {iconSrc ? (
                   <img
                     src={iconSrc}
                     alt={item.label}
-                    className="w-12 h-12 object-contain drop-shadow"
+                    className="w-full h-full object-contain drop-shadow"
                     onError={(e) => {
                       e.currentTarget.onerror = null;
                       e.currentTarget.src = `${import.meta.env.BASE_URL || "/"}icons/organizer.svg`;
                     }}
                   />
                 ) : (
-                  <div className="w-10 h-10 bg-gray-300 rounded" />
+                  <div className="w-full h-full bg-gray-400/50 rounded-lg flex items-center justify-center backdrop-blur-sm">
+                    <Monitor className="w-8 h-8 text-white/80" />
+                  </div>
                 )}
               </div>
-              <div className="mt-1 text-white text-xs text-center drop-shadow font-semibold">{item.label}</div>
+              <div 
+                className="text-white text-xs font-normal drop-shadow-md text-center select-none px-1 rounded-sm line-clamp-2"
+                style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
+              >
+                {item.label}
+              </div>
             </div>
           );
         })}
