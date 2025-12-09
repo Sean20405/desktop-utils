@@ -11,7 +11,7 @@ import type { SimpleRule, HistoryEntry } from './OrganizerTypes';
 import type { DesktopItem } from '../context/DesktopContext';
 import { HistoryPanel } from './OrganizerHistory';
 import { TagsPanel } from './OrganizerTag';
-import { RulesPanel, SavedRulesSection } from './OrganizerRule';
+import { RulesPanel, SavedRulesPanel } from './OrganizerRule';
 import { getSubjectOptionsWithTags, getActionOptionsWithFolders } from './OrganizerConstants';
 import { getAssetUrl } from "../utils/assetUtils";
 import { generateThumbnail } from "../utils/thumbnailUtils";
@@ -152,7 +152,7 @@ function DesktopPreview({ previewItems, isPreviewMode }: { previewItems: Desktop
 }
 
 export function OrganizerApp() {
-  const [tab, setTab] = useState<"rule" | "tag" | "history">("rule");
+  const [tab, setTab] = useState<"rule" | "tag" | "history" | "saved">("tag");
 
   // Load rules from localStorage or use default
   const [rules, setRules] = useState<SimpleRule[]>(() => {
@@ -356,10 +356,31 @@ export function OrganizerApp() {
   };
 
   const handleSaveRule = () => {
-    if (!rules.length && !subjectSelection && !actionSelection) return;
-    const lastRule = rules.length ? rules[rules.length - 1].text : `${subjectSelection} + ${actionSelection}`;
-    setSavedRules((prev) => [{ id: `saved-${Date.now()}`, text: lastRule }, ...prev]);
-  };
+      // 如果規則列表是空的，就不儲存
+      if (rules.length === 0) {
+        alert("目前沒有任何規則可以儲存");
+        return;
+      }
+
+      // 跳出命名視窗
+      const defaultName = `My Rule Set ${savedRules.length + 1}`;
+      const ruleName = window.prompt("請為此規則組合輸入名稱:", defaultName);
+
+      if (ruleName === null) return; // 使用者按取消
+
+      const finalName = ruleName.trim() || defaultName;
+
+      // 建立一個包含當前所有規則的物件
+      const newSavedRule: SimpleRule = {
+        id: `saved-${Date.now()}`,
+        name: finalName,
+        text: `${rules.length} rules`, // 這裡的 text 僅作顯示用途(fallback)
+        // 關鍵：將目前的 rules 陣列完整複製一份存起來
+        rules: [...rules] 
+      };
+
+      setSavedRules((prev) => [newSavedRule, ...prev]);
+    };
 
   const handleRuleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -381,8 +402,25 @@ export function OrganizerApp() {
     }
   };
 
-  const addSavedToApplied = (text: string) => {
-    setRules((prev) => [...prev, { id: `rule-${Date.now()}`, text }]);
+  // 注意：這裡的參數從 text 改為 rule 物件，因為我們需要存取內部的 rules 陣列
+  const addSavedToApplied = (savedItem: SimpleRule) => {
+    if (savedItem.rules && savedItem.rules.length > 0) {
+      // 情況 A: 這是一個規則群組（包含多條規則）
+      // 我們需要為每條規則生成新的 ID，避免 ID 衝突
+      const newRules = savedItem.rules.map(r => ({
+        id: `rule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        text: r.text
+      }));
+      
+      // 將整組規則加入到現有列表的後方
+      setRules((prev) => [...prev, ...newRules]);
+    } else {
+      // 情況 B: 舊的單一規則或是手動建立的單一規則
+      setRules((prev) => [...prev, { 
+        id: `rule-${Date.now()}`, 
+        text: savedItem.text 
+      }]);
+    }
   };
 
   const deleteSavedRule = (id: string) => {
@@ -896,30 +934,14 @@ export function OrganizerApp() {
     <DndContext onDragEnd={handleTagDragEnd}>
       <div className="h-full flex flex-col bg-[#d8d8d8] p-4 gap-4 text-gray-900">
         <div className="flex flex-1 gap-4 min-h-0">
-          <div className="flex-[1.2] flex flex-col gap-3 min-w-[520px]">
-            <div className="h-[360px] rounded-2xl overflow-hidden shadow-inner border border-gray-500 bg-gradient-to-b from-gray-800 to-gray-700">
+          <div className="flex-[4] flex flex-col min-w-[520px]">
+            <div className="h-full rounded-2xl overflow-hidden shadow-inner border border-gray-500 bg-gradient-to-b from-gray-800 to-gray-700">
               <DesktopPreview previewItems={previewItems} isPreviewMode={isPreviewMode} />
             </div>
-
-            <SavedRulesSection
-              savedRules={savedRules}
-              openSavedMenu={openSavedMenu}
-              savedMenuRef={savedMenuRef}
-              onToggleMenu={(id) => setOpenSavedMenu(prev => prev === id ? null : id)}
-              onAddToApplied={addSavedToApplied}
-              onDelete={deleteSavedRule}
-            />
           </div>
 
-          <div className="flex-[1] bg-white rounded-2xl border border-gray-300 shadow overflow-visible min-w-[400px] flex flex-col">
+          <div className="flex-1 bg-white rounded-2xl border border-gray-300 shadow overflow-visible min-w-[400px] flex flex-col">
             <div className="bg-gray-100 border-b border-gray-200 flex">
-              <button
-                onClick={() => setTab("rule")}
-                className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "rule" ? "bg-white border-b-2 border-white" : "text-gray-600"
-                  }`}
-              >
-                Rules
-              </button>
               <button
                 onClick={() => setTab("tag")}
                 className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "tag" ? "bg-white border-b-2 border-white" : "text-gray-600"
@@ -928,17 +950,29 @@ export function OrganizerApp() {
                 Tag
               </button>
               <button
+                onClick={() => setTab("rule")}
+                className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "rule" ? "bg-white border-b-2 border-white" : "text-gray-600"
+                  }`}
+              >
+                Rules
+              </button>
+              <button
                 onClick={() => setTab("history")}
                 className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "history" ? "bg-white border-b-2 border-white" : "text-gray-600"
                   }`}
               >
                 History
               </button>
+              <button
+                onClick={() => setTab("saved")}
+                className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "saved" ? "bg-white border-b-2 border-white" : "text-gray-600"
+                  }`}
+              >
+                Saved
+              </button>
             </div>
 
             <div className={`flex-1 ${tab === "rule" ? "overflow-visible" : "overflow-hidden"}`}>
-              {tab === "rule" && ruleList}
-
               {tab === "tag" && (
                 <TagsPanel
                   tags={tags}
@@ -959,12 +993,25 @@ export function OrganizerApp() {
                 />
               )}
 
+              {tab === "rule" && ruleList}
+
               {tab === "history" && (
                 <HistoryPanel
                   historyItems={historyItems}
                   onToggleStar={toggleHistoryStar}
                   onDeleteItem={deleteHistoryItem}
                   onRollback={handleRollback}
+                />
+              )}
+
+              {tab === "saved" && (
+                <SavedRulesPanel
+                  savedRules={savedRules}
+                  openSavedMenu={openSavedMenu}
+                  savedMenuRef={savedMenuRef}
+                  onToggleMenu={(id) => setOpenSavedMenu(prev => prev === id ? null : id)}
+                  onAddToApplied={addSavedToApplied}
+                  onDelete={deleteSavedRule}
                 />
               )}
             </div>

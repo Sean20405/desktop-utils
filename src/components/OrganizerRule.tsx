@@ -494,70 +494,123 @@ export function RulesPanel({
     );
 }
 
-// Saved Rules Section Component
-type SavedRulesSectionProps = {
+// Saved Rule Item Component (Not draggable)
+function SavedRuleItem({
+    rule,
+    isMenuOpen,
+    onToggleMenu,
+    onAddToApplied,
+    onDelete,
+    menuRef,
+}: {
+    rule: SimpleRule;
+    isMenuOpen: boolean;
+    onToggleMenu: () => void;
+    onAddToApplied: () => void;
+    onDelete: () => void;
+    menuRef: React.RefObject<HTMLDivElement | null>;
+}) {
+// 判斷是否為群組
+    const isGroup = rule.rules && rule.rules.length > 0;
+    const ruleCount = isGroup ? rule.rules!.length : 1;
+
+    return (
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm px-3 py-3 flex items-start justify-between relative group hover:border-blue-300 transition-colors">
+            <div className="flex flex-col gap-1 w-full min-w-0">
+                {/* 標題與規則數量 */}
+                <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-gray-800 truncate" title={rule.name || rule.text}>
+                        {rule.name || rule.text}
+                    </span>
+                    {isGroup && (
+                        <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium flex-shrink-0">
+                            {ruleCount} rules
+                        </span>
+                    )}
+                </div>
+
+                {/* 規則內容預覽 */}
+                <div className="text-xs text-gray-500 flex flex-col gap-0.5 pl-1 border-l-2 border-gray-100">
+                    {isGroup ? (
+                        rule.rules!.slice(0, 3).map((r, idx) => (
+                            <div key={idx} className="truncate">• {r.text}</div>
+                        ))
+                    ) : (
+                        rule.name && rule.name !== rule.text && <div className="truncate">{rule.text}</div>
+                    )}
+                    {isGroup && rule.rules!.length > 3 && (
+                        <div className="text-gray-400 pl-2">... and {rule.rules!.length - 3} more</div>
+                    )}
+                </div>
+            </div>
+
+            <div className="relative flex-shrink-0 ml-2">
+                <button onClick={onToggleMenu} className="p-1 rounded hover:bg-gray-100 text-gray-400">
+                    <MoreVertical size={16} />
+                </button>
+                {isMenuOpen && (
+                    <div ref={menuRef} className="absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 bg-white shadow-lg z-20">
+                        <button
+                            onClick={onAddToApplied}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 text-gray-700"
+                        >
+                            Add to "To be Applied"
+                        </button>
+                        <button
+                            onClick={onDelete}
+                            className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// Saved Rules Panel Component
+type SavedRulesPanelProps = {
     savedRules: SimpleRule[];
     openSavedMenu: string | null;
     savedMenuRef: React.RefObject<HTMLDivElement | null>;
     onToggleMenu: (id: string) => void;
-    onAddToApplied: (text: string) => void;
+    onAddToApplied: (rule: SimpleRule) => void; // 修改這裡：接收整個 rule 物件
     onDelete: (id: string) => void;
 };
 
-export function SavedRulesSection({
+export function SavedRulesPanel({
     savedRules,
     openSavedMenu,
     savedMenuRef,
     onToggleMenu,
     onAddToApplied,
     onDelete,
-}: SavedRulesSectionProps) {
+}: SavedRulesPanelProps) {
     return (
-        <div className="rounded-2xl border border-gray-500 bg-[#c4c4c4] shadow-inner flex flex-col overflow-hidden min-h-[220px]">
-            <div className="px-4 py-2 border-b border-gray-500 bg-[#b5b5b5] text-sm font-semibold font-mono text-gray-800">
-                Saved Rules
+        <div className="flex flex-col h-full">
+            <div className="px-4 py-3 border-b border-gray-200 bg-white flex items-center justify-between">
+                <div className="text-lg font-semibold text-gray-800">Saved Rules</div>
             </div>
-            <div className="p-3 space-y-2 overflow-y-auto max-h-64" ref={savedMenuRef}>
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-white">
                 {savedRules.map((rule) => (
-                    <div
+                    <SavedRuleItem
                         key={rule.id}
-                        className="rounded-lg border border-gray-300 bg-white shadow-sm px-3 py-2 flex items-center justify-between relative"
-                    >
-                        <span className="text-sm text-gray-800">{rule.text}</span>
-                        <div className="relative">
-                            <button
-                                onClick={() => onToggleMenu(rule.id)}
-                                className="p-1 rounded hover:bg-gray-100 text-gray-500 cursor-pointer active:scale-95"
-                                title="More"
-                            >
-                                <MoreVertical size={16} />
-                            </button>
-                            {openSavedMenu === rule.id && (
-                                <div className="absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 bg-white shadow-lg z-10">
-                                    <button
-                                        onClick={() => {
-                                            onAddToApplied(rule.text);
-                                            onToggleMenu(rule.id);
-                                        }}
-                                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
-                                    >
-                                        Add to "To be Applied"
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            onDelete(rule.id);
-                                            onToggleMenu(rule.id);
-                                        }}
-                                        className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 cursor-pointer"
-                                    >
-                                        Delete
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                        rule={rule}
+                        isMenuOpen={openSavedMenu === rule.id}
+                        onToggleMenu={() => onToggleMenu(rule.id)}
+                        onAddToApplied={() => {
+                            onAddToApplied(rule); // 修改這裡：傳遞整個 rule 物件
+                            onToggleMenu(rule.id);
+                        }}
+                        onDelete={() => {
+                            onDelete(rule.id);
+                            onToggleMenu(rule.id);
+                        }}
+                        menuRef={openSavedMenu === rule.id ? savedMenuRef : { current: null }}
+                    />
                 ))}
-                {!savedRules.length && <div className="text-sm text-gray-600">No saved rules.</div>}
+                {!savedRules.length && <div className="text-sm text-gray-500">No saved rules.</div>}
             </div>
         </div>
     );
