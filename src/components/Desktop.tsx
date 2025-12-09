@@ -4,7 +4,7 @@ import { useDesktop } from '../context/DesktopContext';
 import { DesktopIcon } from './DesktopIcon';
 import { ContextMenu } from './ContextMenu';
 import { getAssetUrl } from '../utils/assetUtils';
-import type { SimpleRule, TagItem } from './OrganizerTypes';
+import type { SimpleRule, TagItem, HistoryEntry } from './OrganizerTypes';
 import { executeRule, parseRuleText } from "../utils/ruleEngine";
 // import { parseRuleText } from "../utils/ruleEngine";
 import type { RuleContext } from "../utils/ruleEngine";
@@ -15,9 +15,10 @@ interface DesktopProps {
   searchQuery: string;
   savedRules: SimpleRule[];
   tags: TagItem[];
+  historyItems: HistoryEntry[];
 }
 
-export function Desktop({ onOpenWindow, searchQuery, savedRules, tags}: DesktopProps) {
+export function Desktop({ onOpenWindow, searchQuery, savedRules, tags, historyItems }: DesktopProps) {
   const { items, background, setItems, referenceSize } = useDesktop();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
@@ -138,6 +139,23 @@ export function Desktop({ onOpenWindow, searchQuery, savedRules, tags}: DesktopP
     setItems(newItems);
   };
 
+  const handleRollback = () => {
+    if (historyItems.length === 0) {
+      alert('No history available to rollback');
+      return;
+    }
+    
+    // Get the most recent history entry (last item in the array)
+    const mostRecentEntry = historyItems[historyItems.length - 1];
+    
+    if (mostRecentEntry && mostRecentEntry.items) {
+      setItems(mostRecentEntry.items);
+      console.log(`Rolled back to: ${mostRecentEntry.title}`);
+    } else {
+      alert('Unable to rollback: history entry has no item data');
+    }
+  };
+
   const handleShuffle = () => {
     const maxHeight = referenceSize.height - TASKBAR_HEIGHT;
     const shuffledItems = shufflePositions(items, referenceSize.width, maxHeight);
@@ -207,7 +225,11 @@ export function Desktop({ onOpenWindow, searchQuery, savedRules, tags}: DesktopP
                   onClick: () => handleApplySavedRule(rule)
                 }))
               }
-            ] : [])
+            ] : []),
+            { 
+              label: 'Rollback', 
+              onClick: handleRollback 
+            }
           ]}
 
         />

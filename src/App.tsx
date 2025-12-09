@@ -6,7 +6,7 @@ import { WindowManager } from './components/WindowManager';
 import { Taskbar } from './components/Taskbar';
 import { SearchBar } from './components/SearchBar';
 import { UploadScreen } from './components/UploadScreen';
-import type { SimpleRule, TagItem } from './components/OrganizerTypes';
+import type { SimpleRule, TagItem, HistoryEntry } from './components/OrganizerTypes';
 import { loadDebugData } from './utils/debugUtils';
 import { findNearestAvailablePosition } from './utils/gridUtils';
 
@@ -52,9 +52,25 @@ function App() {
     return [];
   });
 
+  const [historyItems, setHistoryItems] = useState<HistoryEntry[]>(() => {
+    const savedHistory = localStorage.getItem('organizerHistory');
+    if (savedHistory) {
+      try {
+        return JSON.parse(savedHistory);
+      } catch (e) {
+        console.error('Failed to parse saved history:', e);
+      }
+    }
+    return [];
+  });
+
   useEffect(() => {
     localStorage.setItem('organizerTags', JSON.stringify(tags));
   }, [tags]);
+
+  useEffect(() => {
+    localStorage.setItem('organizerHistory', JSON.stringify(historyItems));
+  }, [historyItems]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -224,6 +240,7 @@ function App() {
           searchQuery={searchQuery} 
           savedRules={savedRules}
           tags={tags}
+          historyItems={historyItems}
         />
         <WindowManager
           windows={windows}
@@ -236,6 +253,8 @@ function App() {
           setSavedRules={setSavedRules}
           tags={tags}  
           setTags={setTags}
+          historyItems={historyItems}
+          setHistoryItems={setHistoryItems}
         />
         <Taskbar
           windows={windows}

@@ -1,6 +1,6 @@
 import { Window } from './Window';
 import { OrganizerApp } from './OrganizerApp';
-import type { SimpleRule, TagItem } from './OrganizerTypes';
+import type { SimpleRule, TagItem, HistoryEntry } from './OrganizerTypes';
 
 interface WindowState {
   id: string;
@@ -23,6 +23,8 @@ interface WindowManagerProps {
   setSavedRules: React.Dispatch<React.SetStateAction<SimpleRule[]>>;
   tags: TagItem[];
   setTags: React.Dispatch<React.SetStateAction<TagItem[]>>;
+  historyItems: HistoryEntry[];
+  setHistoryItems: React.Dispatch<React.SetStateAction<HistoryEntry[]>>;
 }
 
 export function WindowManager({ 
@@ -35,7 +37,9 @@ export function WindowManager({
   savedRules,
   setSavedRules,
   tags,
-  setTags
+  setTags,
+  historyItems,
+  setHistoryItems
 }: WindowManagerProps) {
   
   const renderWindowContent = (window: WindowState) => {
@@ -47,6 +51,8 @@ export function WindowManager({
             setSavedRules={setSavedRules}
             tags={tags}
             setTags={setTags}
+            historyItems={historyItems}
+            setHistoryItems={setHistoryItems}
           />
         );
       default:

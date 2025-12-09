@@ -155,12 +155,16 @@ export function OrganizerApp({
     savedRules, 
     setSavedRules,
     tags,
-    setTags
+    setTags,
+    historyItems,
+    setHistoryItems
   }: { 
     savedRules: SimpleRule[]; 
     setSavedRules: React.Dispatch<React.SetStateAction<SimpleRule[]>>; 
     tags: TagItem[]; 
-    setTags: React.Dispatch<React.SetStateAction<TagItem[]>>; 
+    setTags: React.Dispatch<React.SetStateAction<TagItem[]>>;
+    historyItems: HistoryEntry[];
+    setHistoryItems: React.Dispatch<React.SetStateAction<HistoryEntry[]>>;
   }) {
   const [tab, setTab] = useState<"rule" | "tag" | "history" | "saved">("tag");
 
@@ -202,18 +206,7 @@ export function OrganizerApp({
     }
     return [];
   });
-  // Load history from localStorage or start with empty array
-  const [historyItems, setHistoryItems] = useState<HistoryEntry[]>(() => {
-    const savedHistory = localStorage.getItem('organizerHistory');
-    if (savedHistory) {
-      try {
-        return JSON.parse(savedHistory);
-      } catch (e) {
-        console.error('Failed to parse saved history:', e);
-      }
-    }
-    return [];
-  });
+  // History is now managed from parent (App.tsx), no need for local state
   // Load tags from localStorage or start with empty array
   // const [tags, setTags] = useState<{ id: string; name: string; color: string; items: string[]; expanded: boolean }[]>(() => {
   //   const savedTags = localStorage.getItem('organizerTags');
@@ -281,11 +274,6 @@ export function OrganizerApp({
   // useEffect(() => {
   //   localStorage.setItem('organizerTags', JSON.stringify(tags));
   // }, [tags]);
-
-  // Save history to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('organizerHistory', JSON.stringify(historyItems));
-  }, [historyItems]);
 
   // Save folders to localStorage whenever they change
   useEffect(() => {
