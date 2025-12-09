@@ -484,8 +484,61 @@ export function RulesPanel({
     );
 }
 
-// Saved Rules Section Component
-type SavedRulesSectionProps = {
+// Saved Rule Item Component (Not draggable)
+function SavedRuleItem({
+    rule,
+    isMenuOpen,
+    onToggleMenu,
+    onAddToApplied,
+    onDelete,
+    menuRef,
+}: {
+    rule: SimpleRule;
+    isMenuOpen: boolean;
+    onToggleMenu: () => void;
+    onAddToApplied: () => void;
+    onDelete: () => void;
+    menuRef: React.RefObject<HTMLDivElement | null>;
+}) {
+    return (
+        <div
+            className="rounded-lg border border-gray-200 bg-white shadow-sm px-3 py-2 flex items-start justify-between relative"
+        >
+            <div className="flex items-start gap-2">
+                <span className="text-sm text-gray-800">{rule.text}</span>
+            </div>
+
+            <div className="relative">
+                <button
+                    onClick={onToggleMenu}
+                    className="p-1 rounded hover:bg-gray-100 text-gray-400 cursor-pointer active:scale-95"
+                    title="More"
+                >
+                    <MoreVertical size={16} />
+                </button>
+                {isMenuOpen && (
+                    <div ref={menuRef} className="absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 bg-white shadow-lg z-10">
+                        <button
+                            onClick={onAddToApplied}
+                            className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
+                        >
+                            Add to "To be Applied"
+                        </button>
+                        <button
+                            onClick={onDelete}
+                            className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 cursor-pointer"
+                        >
+                            Delete
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+// Saved Rules Panel Component
+type SavedRulesPanelProps = {
     savedRules: SimpleRule[];
     openSavedMenu: string | null;
     savedMenuRef: React.RefObject<HTMLDivElement | null>;
@@ -494,60 +547,38 @@ type SavedRulesSectionProps = {
     onDelete: (id: string) => void;
 };
 
-export function SavedRulesSection({
+export function SavedRulesPanel({
     savedRules,
     openSavedMenu,
     savedMenuRef,
     onToggleMenu,
     onAddToApplied,
     onDelete,
-}: SavedRulesSectionProps) {
+}: SavedRulesPanelProps) {
     return (
-        <div className="rounded-2xl border border-gray-500 bg-[#c4c4c4] shadow-inner flex flex-col overflow-hidden min-h-[220px]">
-            <div className="px-4 py-2 border-b border-gray-500 bg-[#b5b5b5] text-sm font-semibold font-mono text-gray-800">
-                Saved Rules
+        <div className="flex flex-col h-full">
+            <div className="px-4 py-3 border-b border-gray-200 bg-white flex items-center justify-between">
+                <div className="text-lg font-semibold text-gray-800">Saved Rules</div>
             </div>
-            <div className="p-3 space-y-2 overflow-y-auto max-h-64" ref={savedMenuRef}>
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 bg-white">
                 {savedRules.map((rule) => (
-                    <div
+                    <SavedRuleItem
                         key={rule.id}
-                        className="rounded-lg border border-gray-300 bg-white shadow-sm px-3 py-2 flex items-center justify-between relative"
-                    >
-                        <span className="text-sm text-gray-800">{rule.text}</span>
-                        <div className="relative">
-                            <button
-                                onClick={() => onToggleMenu(rule.id)}
-                                className="p-1 rounded hover:bg-gray-100 text-gray-500 cursor-pointer active:scale-95"
-                                title="More"
-                            >
-                                <MoreVertical size={16} />
-                            </button>
-                            {openSavedMenu === rule.id && (
-                                <div className="absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 bg-white shadow-lg z-10">
-                                    <button
-                                        onClick={() => {
-                                            onAddToApplied(rule.text);
-                                            onToggleMenu(rule.id);
-                                        }}
-                                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
-                                    >
-                                        Add to "To be Applied"
-                                    </button>
-                                    <button
-                                        onClick={() => {
-                                            onDelete(rule.id);
-                                            onToggleMenu(rule.id);
-                                        }}
-                                        className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 cursor-pointer"
-                                    >
-                                        Delete
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                        rule={rule}
+                        isMenuOpen={openSavedMenu === rule.id}
+                        onToggleMenu={() => onToggleMenu(rule.id)}
+                        onAddToApplied={() => {
+                            onAddToApplied(rule.text);
+                            onToggleMenu(rule.id);
+                        }}
+                        onDelete={() => {
+                            onDelete(rule.id);
+                            onToggleMenu(rule.id);
+                        }}
+                        menuRef={openSavedMenu === rule.id ? savedMenuRef : { current: null }}
+                    />
                 ))}
-                {!savedRules.length && <div className="text-sm text-gray-600">No saved rules.</div>}
+                {!savedRules.length && <div className="text-sm text-gray-500">No saved rules.</div>}
             </div>
         </div>
     );

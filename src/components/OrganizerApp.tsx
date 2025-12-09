@@ -11,7 +11,7 @@ import type { SimpleRule, HistoryEntry } from './OrganizerTypes';
 import type { DesktopItem } from '../context/DesktopContext';
 import { HistoryPanel } from './OrganizerHistory';
 import { TagsPanel } from './OrganizerTag';
-import { RulesPanel, SavedRulesSection } from './OrganizerRule';
+import { RulesPanel, SavedRulesPanel } from './OrganizerRule';
 import { getSubjectOptionsWithTags, getActionOptionsWithFolders } from './OrganizerConstants';
 import { getAssetUrl } from "../utils/assetUtils";
 
@@ -151,7 +151,7 @@ function DesktopPreview({ previewItems, isPreviewMode }: { previewItems: Desktop
 }
 
 export function OrganizerApp() {
-  const [tab, setTab] = useState<"rule" | "tag" | "history">("rule");
+  const [tab, setTab] = useState<"rule" | "tag" | "history" | "saved">("tag");
 
   // Load rules from localStorage or use default
   const [rules, setRules] = useState<SimpleRule[]>(() => {
@@ -866,30 +866,14 @@ export function OrganizerApp() {
     <DndContext onDragEnd={handleTagDragEnd}>
       <div className="h-full flex flex-col bg-[#d8d8d8] p-4 gap-4 text-gray-900">
         <div className="flex flex-1 gap-4 min-h-0">
-          <div className="flex-[1.2] flex flex-col gap-3 min-w-[520px]">
-            <div className="h-[360px] rounded-2xl overflow-hidden shadow-inner border border-gray-500 bg-gradient-to-b from-gray-800 to-gray-700">
+          <div className="flex-[4] flex flex-col min-w-[520px]">
+            <div className="h-full rounded-2xl overflow-hidden shadow-inner border border-gray-500 bg-gradient-to-b from-gray-800 to-gray-700">
               <DesktopPreview previewItems={previewItems} isPreviewMode={isPreviewMode} />
             </div>
-
-            <SavedRulesSection
-              savedRules={savedRules}
-              openSavedMenu={openSavedMenu}
-              savedMenuRef={savedMenuRef}
-              onToggleMenu={(id) => setOpenSavedMenu(prev => prev === id ? null : id)}
-              onAddToApplied={addSavedToApplied}
-              onDelete={deleteSavedRule}
-            />
           </div>
 
-          <div className="flex-[1] bg-white rounded-2xl border border-gray-300 shadow overflow-visible min-w-[400px] flex flex-col">
+          <div className="flex-1 bg-white rounded-2xl border border-gray-300 shadow overflow-visible min-w-[400px] flex flex-col">
             <div className="bg-gray-100 border-b border-gray-200 flex">
-              <button
-                onClick={() => setTab("rule")}
-                className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "rule" ? "bg-white border-b-2 border-white" : "text-gray-600"
-                  }`}
-              >
-                Rules
-              </button>
               <button
                 onClick={() => setTab("tag")}
                 className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "tag" ? "bg-white border-b-2 border-white" : "text-gray-600"
@@ -898,17 +882,29 @@ export function OrganizerApp() {
                 Tag
               </button>
               <button
+                onClick={() => setTab("rule")}
+                className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "rule" ? "bg-white border-b-2 border-white" : "text-gray-600"
+                  }`}
+              >
+                Rules
+              </button>
+              <button
                 onClick={() => setTab("history")}
                 className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "history" ? "bg-white border-b-2 border-white" : "text-gray-600"
                   }`}
               >
                 History
               </button>
+              <button
+                onClick={() => setTab("saved")}
+                className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "saved" ? "bg-white border-b-2 border-white" : "text-gray-600"
+                  }`}
+              >
+                Saved
+              </button>
             </div>
 
             <div className={`flex-1 ${tab === "rule" ? "overflow-visible" : "overflow-hidden"}`}>
-              {tab === "rule" && ruleList}
-
               {tab === "tag" && (
                 <TagsPanel
                   tags={tags}
@@ -929,11 +925,24 @@ export function OrganizerApp() {
                 />
               )}
 
+              {tab === "rule" && ruleList}
+
               {tab === "history" && (
                 <HistoryPanel
                   historyItems={historyItems}
                   onToggleStar={toggleHistoryStar}
                   onDeleteItem={deleteHistoryItem}
+                />
+              )}
+
+              {tab === "saved" && (
+                <SavedRulesPanel
+                  savedRules={savedRules}
+                  openSavedMenu={openSavedMenu}
+                  savedMenuRef={savedMenuRef}
+                  onToggleMenu={(id) => setOpenSavedMenu(prev => prev === id ? null : id)}
+                  onAddToApplied={addSavedToApplied}
+                  onDelete={deleteSavedRule}
                 />
               )}
             </div>
