@@ -19,11 +19,17 @@ export function HistoryPanel({ historyItems, onToggleStar, onDeleteItem, onRollb
         }
     };
 
+    // Sort items: Starred items first, then by original order (time)
+    const sortedItems = [...historyItems].sort((a, b) => {
+        if (a.starred === b.starred) return 0;
+        return a.starred ? -1 : 1;
+    });
+
     return (
         <div className="flex flex-col h-full p-4 gap-4 overflow-hidden">
             <div className="flex-1 overflow-y-auto">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {historyItems.map((item) => (
+                    {sortedItems.map((item) => (
                         <div
                             key={item.id}
                             className="border border-gray-200 rounded-xl shadow-sm bg-white p-3 flex flex-col gap-2"
