@@ -7,7 +7,6 @@ import { Taskbar } from './components/Taskbar';
 import { SearchBar } from './components/SearchBar';
 import { UploadScreen } from './components/UploadScreen';
 import { loadDebugData } from './utils/debugUtils';
-import { GRID_WIDTH, GRID_HEIGHT, GRID_START_X, GRID_START_Y } from './constants/gridConstants';
 import { findNearestAvailablePosition } from './utils/gridUtils';
 
 const SKIP_UPLOAD = true; // Set to true to skip upload screen for debugging

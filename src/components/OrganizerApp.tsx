@@ -924,7 +924,6 @@ export function OrganizerApp() {
                   onEditChange={setEditingName}
                   onColorChange={updateTagColor}
                   onRemoveFile={removeFileFromTag}
-                  onDragEnd={handleTagDragEnd}
                   onGenerateTags={handleAIGenerateTags}
                   onAssignTags={handleAIAssignTags}
                 />

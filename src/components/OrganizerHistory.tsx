@@ -1,4 +1,4 @@
-import { Star, Trash2 } from "lucide-react";
+import { Star } from "lucide-react";
 import type { HistoryEntry } from './OrganizerTypes';
 
 type HistoryPanelProps = {
@@ -24,8 +24,8 @@ export function HistoryPanel({ historyItems, onToggleStar, onDeleteItem }: Histo
                                 </div>
                                 <button
                                     className={`cursor-pointer active:scale-95 p-1 rounded transition-colors ${item.starred
-                                            ? "text-yellow-500 hover:text-yellow-600"
-                                            : "text-gray-400 hover:text-gray-600"
+                                        ? "text-yellow-500 hover:text-yellow-600"
+                                        : "text-gray-400 hover:text-gray-600"
                                         }`}
                                     onClick={() => onToggleStar(item.id)}
                                 >
