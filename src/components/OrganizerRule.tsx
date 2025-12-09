@@ -369,6 +369,7 @@ type RulesPanelProps = {
     onToggleMenu: (id: string) => void;
     onPreview: () => void;
     onApply: () => void;
+    isApplying?: boolean;
 };
 
 export function RulesPanel({
@@ -393,6 +394,7 @@ export function RulesPanel({
     onToggleMenu,
     onPreview,
     onApply,
+    isApplying = false,
 }: RulesPanelProps) {
     return (
         <div className="flex flex-col h-full">
@@ -475,9 +477,17 @@ export function RulesPanel({
                 </button>
                 <button
                     onClick={onApply}
-                    className="cursor-pointer active:scale-95 flex-1 py-2 border border-gray-400 rounded-lg bg-white hover:bg-gray-50 shadow-inner"
+                    disabled={isApplying}
+                    className={`cursor-pointer active:scale-95 flex-1 py-2 border border-gray-400 rounded-lg bg-white hover:bg-gray-50 shadow-inner flex items-center justify-center gap-2 ${isApplying ? 'opacity-70 cursor-not-allowed' : ''}`}
                 >
-                    Apply
+                    {isApplying ? (
+                        <>
+                            <div className="w-4 h-4 border-2 border-gray-600 border-t-transparent rounded-full animate-spin" />
+                            Applying...
+                        </>
+                    ) : (
+                        'Apply'
+                    )}
                 </button>
             </div>
         </div>

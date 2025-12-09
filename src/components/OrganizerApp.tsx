@@ -14,6 +14,7 @@ import { TagsPanel } from './OrganizerTag';
 import { RulesPanel, SavedRulesSection } from './OrganizerRule';
 import { getSubjectOptionsWithTags, getActionOptionsWithFolders } from './OrganizerConstants';
 import { getAssetUrl } from "../utils/assetUtils";
+import { generateThumbnail } from "../utils/thumbnailUtils";
 
 
 // Draggable Preview File Component
@@ -233,6 +234,7 @@ export function OrganizerApp() {
   const [editingName, setEditingName] = useState("");
   const [isGeneratingTags, setIsGeneratingTags] = useState(false);
   const [isAssigningTags, setIsAssigningTags] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [pendingAction, setPendingAction] = useState<"generate" | "assign" | null>(null);
@@ -459,52 +461,67 @@ export function OrganizerApp() {
   };
 
   // Handle Apply
-  const handleApply = () => {
+  const handleApply = async () => {
     if (rules.length === 0) {
       alert('請先添加至少一個規則');
       return;
     }
 
-    // Execute all rules in order
-    let resultItems = [...items];
-    const descriptions: string[] = [];
+    setIsApplying(true);
 
-    for (const rule of rules) {
-      const parsed = parseRuleText(rule.text);
-      if (parsed) {
-        const context: RuleContext = {
-          items: resultItems,
-          tags: tags,
-        };
-        const result = executeRule(parsed.subject, parsed.action, context);
-        if (result) {
-          resultItems = result.items;
-          descriptions.push(result.description);
+    try {
+      // Execute all rules in order
+      let resultItems = [...items];
+      const descriptions: string[] = [];
+
+      for (const rule of rules) {
+        const parsed = parseRuleText(rule.text);
+        if (parsed) {
+          const context: RuleContext = {
+            items: resultItems,
+            tags: tags,
+          };
+          const result = executeRule(parsed.subject, parsed.action, context);
+          if (result) {
+            resultItems = result.items;
+            descriptions.push(result.description);
+          }
         }
       }
-    }
 
-    if (descriptions.length > 0) {
-      // Apply to actual desktop
-      setItems(resultItems);
-      setPreviewItems(resultItems);
-      setIsPreviewMode(false);  // Exit preview mode after applying
+      if (descriptions.length > 0) {
+        // Generate thumbnail for the OLD state (items)
+        // Use a small delay to allow UI to update to loading state
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const thumbnail = await generateThumbnail(items);
 
-      // Add to history
-      const now = new Date();
-      const timeStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      const newHistoryEntry: HistoryEntry = {
-        id: `h-${Date.now()}`,
-        time: timeStr,
-        title: `Rules: ${descriptions.join(', ')}`,
-        starred: false,
-        items: items,
-      };
-      setHistoryItems((prev) => [newHistoryEntry, ...prev]);
+        // Apply to actual desktop
+        setItems(resultItems);
+        setPreviewItems(resultItems);
+        setIsPreviewMode(false);  // Exit preview mode after applying
 
-      alert('規則已成功應用!');
-    } else {
-      alert('無法執行這些規則，請檢查規則格式');
+        // Add to history
+        const now = new Date();
+        const timeStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        const newHistoryEntry: HistoryEntry = {
+          id: `h-${Date.now()}`,
+          time: timeStr,
+          title: `Rules: ${descriptions.join(', ')}`,
+          starred: false,
+          items: items,
+          thumbnail: thumbnail,
+        };
+        setHistoryItems((prev) => [newHistoryEntry, ...prev]);
+
+        alert('規則已成功應用!');
+      } else {
+        alert('無法執行這些規則，請檢查規則格式');
+      }
+    } catch (error) {
+      console.error('Error applying rules:', error);
+      alert('應用規則時發生錯誤');
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -857,6 +874,7 @@ export function OrganizerApp() {
       onToggleMenu={(id) => setOpenRuleMenu(prev => prev === id ? null : id)}
       onPreview={handlePreview}
       onApply={handleApply}
+      isApplying={isApplying}
     />
   );
 
