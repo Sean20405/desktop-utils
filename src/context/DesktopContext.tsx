@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
+// import type { SimpleRule } from '../components/OrganizerTypes';
 import initialData from '../data/desktop.json';
 
 export interface DesktopItem {
@@ -20,14 +21,18 @@ export interface Size {
   height: number;
 }
 
+
+
 interface DesktopContextType {
   items: DesktopItem[];
   background: string;
   isLoaded: boolean;
   referenceSize: Size;
+  // savedRules: SimpleRule[];
   setItems: React.Dispatch<React.SetStateAction<DesktopItem[]>>;
   setIsLoaded: React.Dispatch<React.SetStateAction<boolean>>;
   setReferenceSize: React.Dispatch<React.SetStateAction<Size>>;
+  // setSavedRules: React.Dispatch<React.SetStateAction<SimpleRule[]>>;
   updateItemPosition: (id: string, x: number, y: number) => void;
 }
 
@@ -38,6 +43,7 @@ export function DesktopProvider({ children }: { children: ReactNode }) {
   const [background] = useState<string>(initialData.background);
   const [isLoaded, setIsLoaded] = useState(false);
   const [referenceSize, setReferenceSize] = useState<Size>({ width: 1920, height: 1080 });
+  // const [savedRules, setSavedRules] = useState<SimpleRule[]>([]);
 
   const updateItemPosition = (id: string, x: number, y: number) => {
     setItems(prev => prev.map(item =>
@@ -51,9 +57,11 @@ export function DesktopProvider({ children }: { children: ReactNode }) {
       background,
       isLoaded,
       referenceSize,
+      // savedRules,
       setItems,
       setIsLoaded,
       setReferenceSize,
+      // setSavedRules,
       updateItemPosition
     }}>
       {children}

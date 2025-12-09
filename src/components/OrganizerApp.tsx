@@ -7,7 +7,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { generateTagsFromFiles, assignFilesToTags, hasGeminiApiKey, setGeminiApiKey } from "../utils/geminiApi";
 import { executeRule, parseRuleText } from "../utils/ruleEngine";
 import type { RuleContext } from "../utils/ruleEngine";
-import type { SimpleRule, HistoryEntry } from './OrganizerTypes';
+import type { SimpleRule, HistoryEntry, TagItem } from './OrganizerTypes';
 import type { DesktopItem } from '../context/DesktopContext';
 import { HistoryPanel } from './OrganizerHistory';
 import { TagsPanel } from './OrganizerTag';
@@ -151,7 +151,21 @@ function DesktopPreview({ previewItems, isPreviewMode }: { previewItems: Desktop
   );
 }
 
-export function OrganizerApp() {
+export function OrganizerApp({ 
+    savedRules, 
+    setSavedRules,
+    tags,
+    setTags,
+    historyItems,
+    setHistoryItems
+  }: { 
+    savedRules: SimpleRule[]; 
+    setSavedRules: React.Dispatch<React.SetStateAction<SimpleRule[]>>; 
+    tags: TagItem[]; 
+    setTags: React.Dispatch<React.SetStateAction<TagItem[]>>;
+    historyItems: HistoryEntry[];
+    setHistoryItems: React.Dispatch<React.SetStateAction<HistoryEntry[]>>;
+  }) {
   const [tab, setTab] = useState<"rule" | "tag" | "history" | "saved">("tag");
 
   // Load rules from localStorage or use default
@@ -165,26 +179,12 @@ export function OrganizerApp() {
       }
     }
     return [
-      { id: "rule-1", text: 'All files with tag "game" + put in "game" folder' },
-      { id: "rule-2", text: 'All files of type .txt + put in "text file" folder' },
+      { id: "rule-1", text: 'Tags > game + Put in "game" folder' },
+      { id: "rule-2", text: 'File Type > .txt + Put in "text file" folder' },
     ];
   });
 
-  // Load saved rules from localStorage or use default
-  const [savedRules, setSavedRules] = useState<SimpleRule[]>(() => {
-    const savedRulesData = localStorage.getItem('organizerSavedRules');
-    if (savedRulesData) {
-      try {
-        return JSON.parse(savedRulesData);
-      } catch (e) {
-        console.error('Failed to parse saved rules data:', e);
-      }
-    }
-    return [
-      { id: "saved-1", text: 'All files with tag "game" + put in "game" folder' },
-      { id: "saved-2", text: 'All files with tag "NYCU" + put in "NYCU" folder' },
-    ];
-  });
+
   const [openSavedMenu, setOpenSavedMenu] = useState<string | null>(null);
   const [openRuleMenu, setOpenRuleMenu] = useState<string | null>(null);
   const savedMenuRef = useRef<HTMLDivElement | null>(null);
@@ -206,30 +206,19 @@ export function OrganizerApp() {
     }
     return [];
   });
-  // Load history from localStorage or start with empty array
-  const [historyItems, setHistoryItems] = useState<HistoryEntry[]>(() => {
-    const savedHistory = localStorage.getItem('organizerHistory');
-    if (savedHistory) {
-      try {
-        return JSON.parse(savedHistory);
-      } catch (e) {
-        console.error('Failed to parse saved history:', e);
-      }
-    }
-    return [];
-  });
+  // History is now managed from parent (App.tsx), no need for local state
   // Load tags from localStorage or start with empty array
-  const [tags, setTags] = useState<{ id: string; name: string; color: string; items: string[]; expanded: boolean }[]>(() => {
-    const savedTags = localStorage.getItem('organizerTags');
-    if (savedTags) {
-      try {
-        return JSON.parse(savedTags);
-      } catch (e) {
-        console.error('Failed to parse saved tags:', e);
-      }
-    }
-    return [];
-  });
+  // const [tags, setTags] = useState<{ id: string; name: string; color: string; items: string[]; expanded: boolean }[]>(() => {
+  //   const savedTags = localStorage.getItem('organizerTags');
+  //   if (savedTags) {
+  //     try {
+  //       return JSON.parse(savedTags);
+  //     } catch (e) {
+  //       console.error('Failed to parse saved tags:', e);
+  //     }
+  //   }
+  //   return [];
+  // });
   // Load last applied items from localStorage
   const [lastAppliedItems, setLastAppliedItems] = useState<DesktopItem[] | null>(() => {
     const saved = localStorage.getItem('organizerLastApplied');
@@ -277,19 +266,14 @@ export function OrganizerApp() {
   }, [rules]);
 
   // Save savedRules to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('organizerSavedRules', JSON.stringify(savedRules));
-  }, [savedRules]);
+  // useEffect(() => {
+  //   localStorage.setItem('organizerSavedRules', JSON.stringify(savedRules));
+  // }, [savedRules]);
 
   // Save tags to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('organizerTags', JSON.stringify(tags));
-  }, [tags]);
-
-  // Save history to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('organizerHistory', JSON.stringify(historyItems));
-  }, [historyItems]);
+  // useEffect(() => {
+  //   localStorage.setItem('organizerTags', JSON.stringify(tags));
+  // }, [tags]);
 
   // Save folders to localStorage whenever they change
   useEffect(() => {
@@ -605,7 +589,7 @@ export function OrganizerApp() {
   };
 
   const createNewTag = () => {
-    let baseName = "NewTag";
+    const baseName = "NewTag";
     let counter = 0;
     let newName = baseName;
 
@@ -975,8 +959,8 @@ export function OrganizerApp() {
     <DndContext onDragEnd={handleTagDragEnd}>
       <div className="h-full flex flex-col bg-[#d8d8d8] p-4 gap-4 text-gray-900">
         <div className="flex flex-1 gap-4 min-h-0">
-          <div className="flex-[4] flex flex-col min-w-[520px]">
-            <div className="h-full rounded-2xl overflow-hidden shadow-inner border border-gray-500 bg-gradient-to-b from-gray-800 to-gray-700">
+          <div className="flex-4 flex flex-col min-w-[520px]">
+            <div className="h-full rounded-2xl overflow-hidden shadow-inner border border-gray-500 bg-linear-to-b from-gray-800 to-gray-700">
               <DesktopPreview previewItems={previewItems} isPreviewMode={isPreviewMode} />
             </div>
           </div>
