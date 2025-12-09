@@ -53,7 +53,7 @@ export function DesktopIcon({ id, label, imageUrl, onClick, position, isVisible 
           </div>
         )}
       </div>
-      <span className="text-white text-xs font-normal drop-shadow-md text-center select-none px-1 rounded-sm line-clamp-2" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
+      <span className="desktop-icon-label text-white text-xs font-normal drop-shadow-md text-center select-none px-1 rounded-sm line-clamp-2" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}>
         {label}
       </span>
     </div>

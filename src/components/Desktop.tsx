@@ -91,6 +91,7 @@ export function Desktop({ onOpenWindow, searchQuery }: DesktopProps) {
 
   return (
     <div
+      id="desktop-container"
       className="relative w-full h-full bg-cover bg-center overflow-hidden"
       style={{
         backgroundImage: `url("${getAssetUrl(background)}")`
