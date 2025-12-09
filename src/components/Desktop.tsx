@@ -4,14 +4,20 @@ import { useDesktop } from '../context/DesktopContext';
 import { DesktopIcon } from './DesktopIcon';
 import { ContextMenu } from './ContextMenu';
 import { getAssetUrl } from '../utils/assetUtils';
+import type { SimpleRule, TagItem } from './OrganizerTypes';
+import { executeRule, parseRuleText } from "../utils/ruleEngine";
+// import { parseRuleText } from "../utils/ruleEngine";
+import type { RuleContext } from "../utils/ruleEngine";
 import { GRID_WIDTH, GRID_HEIGHT, GRID_START_X, GRID_START_Y, shufflePositions } from '../constants/gridConstants';
 
 interface DesktopProps {
   onOpenWindow: (id: string) => void;
   searchQuery: string;
+  savedRules: SimpleRule[];
+  tags: TagItem[];
 }
 
-export function Desktop({ onOpenWindow, searchQuery }: DesktopProps) {
+export function Desktop({ onOpenWindow, searchQuery, savedRules, tags}: DesktopProps) {
   const { items, background, setItems, referenceSize } = useDesktop();
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
@@ -59,6 +65,55 @@ export function Desktop({ onOpenWindow, searchQuery }: DesktopProps) {
     });
 
     setItems(newItems);
+  };
+
+  // TODO: Integrate with ruleEngine to execute the saved rule
+  const handleApplySavedRule = (ruleSet: SimpleRule) => {
+    console.log('Applying rule:', ruleSet);
+    try {
+      // Check if this is a rule set with multiple rules
+      if (!ruleSet.rules || ruleSet.rules.length === 0) {
+        alert('Empty RuleSet!');
+        return;
+      }
+
+      // Execute all rules in the set sequentially
+      let resultItems = [...items];
+      let success = false;
+
+      for (const rule of ruleSet.rules) {
+        const parsed = parseRuleText(rule.text);
+        if (parsed) {
+          // console.log('Parsed rule:', parsed);
+          const context: RuleContext = {
+            items: resultItems,
+            tags: tags
+          };
+
+          // console.log('Executing rule with context:', context);
+
+          const result = executeRule(parsed.subject, parsed.action, context);
+
+          console.log('Rule execution result:', result);
+          if (result) {
+            resultItems = result.items;
+            success = true;
+          }
+        }
+      }
+
+      if (success) {
+        // Update the desktop items with the final result
+        setItems(resultItems);
+        console.log(`Applied rule set: ${ruleSet.name}`);
+      } else {
+        alert(`Can't execute ruleSet: ${ruleSet.name}`);
+      }
+    } catch (error) {
+      console.error('Error applying rule set:', error);
+      alert('Error applying rule set');
+    }
+    
   };
 
   const handleSortByName = () => {
@@ -119,7 +174,7 @@ export function Desktop({ onOpenWindow, searchQuery }: DesktopProps) {
           );
         })}
       </div>
-
+ 
       {/* Floating Shuffle Button */}
       <button
         onClick={handleShuffle}
@@ -135,9 +190,26 @@ export function Desktop({ onOpenWindow, searchQuery }: DesktopProps) {
           y={contextMenu.y}
           onClose={() => setContextMenu(null)}
           actions={[
-            { label: '快速整理', onClick: handleOrganize },
-            { label: '依名稱排序', onClick: handleSortByName },
+            { 
+              label: '快速整理', 
+              onClick: handleOrganize 
+            },
+            { 
+              label: '依名稱排序', 
+              onClick: handleSortByName 
+            },
+            ...(savedRules.length > 0 ? [
+              {
+                label: '套用已保存的規則',
+                onClick: () => {}, // No direct action for parent item
+                submenu: savedRules.map(rule => ({
+                  label: rule.name || rule.text || `Rule ${rule.id}`,
+                  onClick: () => handleApplySavedRule(rule)
+                }))
+              }
+            ] : [])
           ]}
+
         />
       )}
     </div>

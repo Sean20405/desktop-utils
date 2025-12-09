@@ -1,5 +1,6 @@
 import { Window } from './Window';
 import { OrganizerApp } from './OrganizerApp';
+import type { SimpleRule, TagItem } from './OrganizerTypes';
 
 interface WindowState {
   id: string;
@@ -18,6 +19,10 @@ interface WindowManagerProps {
   onFocusWindow: (id: string) => void;
   onToggleMaximize: (id: string) => void;
   onResizeWindow: (id: string, size: { width: number; height: number }) => void;
+  savedRules: SimpleRule[];
+  setSavedRules: React.Dispatch<React.SetStateAction<SimpleRule[]>>;
+  tags: TagItem[];
+  setTags: React.Dispatch<React.SetStateAction<TagItem[]>>;
 }
 
 export function WindowManager({ 
@@ -26,13 +31,24 @@ export function WindowManager({
   onCloseWindow, 
   onFocusWindow,
   onToggleMaximize,
-  onResizeWindow
+  onResizeWindow,
+  savedRules,
+  setSavedRules,
+  tags,
+  setTags
 }: WindowManagerProps) {
   
   const renderWindowContent = (window: WindowState) => {
     switch (window.type) {
       case 'organizer':
-        return <OrganizerApp />;
+        return (
+          <OrganizerApp 
+            savedRules={savedRules} 
+            setSavedRules={setSavedRules}
+            tags={tags}
+            setTags={setTags}
+          />
+        );
       default:
         return <div className="p-4">Content for {window.title}</div>;
     }

@@ -6,6 +6,7 @@ import { WindowManager } from './components/WindowManager';
 import { Taskbar } from './components/Taskbar';
 import { SearchBar } from './components/SearchBar';
 import { UploadScreen } from './components/UploadScreen';
+import type { SimpleRule, TagItem } from './components/OrganizerTypes';
 import { loadDebugData } from './utils/debugUtils';
 import { findNearestAvailablePosition } from './utils/gridUtils';
 
@@ -27,6 +28,33 @@ function App() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [windowSize, setWindowSize] = useState({ width: window.innerWidth, height: window.innerHeight });
+  const [savedRules, setSavedRules] = useState<SimpleRule[]>(() => {
+    const savedRulesData = localStorage.getItem('organizerSavedRules');
+    if (savedRulesData) {
+      try {
+        return JSON.parse(savedRulesData);
+      } catch (e) {
+        console.error('Failed to parse saved rules data:', e);
+      }
+    }
+    return [];
+  });
+
+  const [tags, setTags] = useState<TagItem[]>(() => {
+    const savedTags = localStorage.getItem('organizerTags');
+    if (savedTags) {
+      try {
+        return JSON.parse(savedTags);
+      } catch (e) {
+        console.error('Failed to parse saved tags:', e);
+      }
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('organizerTags', JSON.stringify(tags));
+  }, [tags]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -78,6 +106,11 @@ function App() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Save savedRules to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('organizerSavedRules', JSON.stringify(savedRules));
+  }, [savedRules]);
 
   if (!isLoaded) {
     return (
@@ -186,7 +219,12 @@ function App() {
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
       <div className="relative w-full h-full overflow-hidden">
-        <Desktop onOpenWindow={openWindow} searchQuery={searchQuery} />
+        <Desktop 
+          onOpenWindow={openWindow} 
+          searchQuery={searchQuery} 
+          savedRules={savedRules}
+          tags={tags}
+        />
         <WindowManager
           windows={windows}
           activeWindowId={activeWindowId}
@@ -194,6 +232,10 @@ function App() {
           onFocusWindow={focusWindow}
           onToggleMaximize={toggleMaximize}
           onResizeWindow={resizeWindow}
+          savedRules={savedRules}
+          setSavedRules={setSavedRules}
+          tags={tags}  
+          setTags={setTags}
         />
         <Taskbar
           windows={windows}

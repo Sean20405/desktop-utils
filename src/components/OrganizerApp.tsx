@@ -7,7 +7,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { generateTagsFromFiles, assignFilesToTags, hasGeminiApiKey, setGeminiApiKey } from "../utils/geminiApi";
 import { executeRule, parseRuleText } from "../utils/ruleEngine";
 import type { RuleContext } from "../utils/ruleEngine";
-import type { SimpleRule, HistoryEntry } from './OrganizerTypes';
+import type { SimpleRule, HistoryEntry, TagItem } from './OrganizerTypes';
 import type { DesktopItem } from '../context/DesktopContext';
 import { HistoryPanel } from './OrganizerHistory';
 import { TagsPanel } from './OrganizerTag';
@@ -151,7 +151,17 @@ function DesktopPreview({ previewItems, isPreviewMode }: { previewItems: Desktop
   );
 }
 
-export function OrganizerApp() {
+export function OrganizerApp({ 
+    savedRules, 
+    setSavedRules,
+    tags,
+    setTags
+  }: { 
+    savedRules: SimpleRule[]; 
+    setSavedRules: React.Dispatch<React.SetStateAction<SimpleRule[]>>; 
+    tags: TagItem[]; 
+    setTags: React.Dispatch<React.SetStateAction<TagItem[]>>; 
+  }) {
   const [tab, setTab] = useState<"rule" | "tag" | "history" | "saved">("tag");
 
   // Load rules from localStorage or use default
@@ -165,26 +175,12 @@ export function OrganizerApp() {
       }
     }
     return [
-      { id: "rule-1", text: 'All files with tag "game" + put in "game" folder' },
-      { id: "rule-2", text: 'All files of type .txt + put in "text file" folder' },
+      { id: "rule-1", text: 'Tags > game + Put in "game" folder' },
+      { id: "rule-2", text: 'File Type > .txt + Put in "text file" folder' },
     ];
   });
 
-  // Load saved rules from localStorage or use default
-  const [savedRules, setSavedRules] = useState<SimpleRule[]>(() => {
-    const savedRulesData = localStorage.getItem('organizerSavedRules');
-    if (savedRulesData) {
-      try {
-        return JSON.parse(savedRulesData);
-      } catch (e) {
-        console.error('Failed to parse saved rules data:', e);
-      }
-    }
-    return [
-      { id: "saved-1", text: 'All files with tag "game" + put in "game" folder' },
-      { id: "saved-2", text: 'All files with tag "NYCU" + put in "NYCU" folder' },
-    ];
-  });
+
   const [openSavedMenu, setOpenSavedMenu] = useState<string | null>(null);
   const [openRuleMenu, setOpenRuleMenu] = useState<string | null>(null);
   const savedMenuRef = useRef<HTMLDivElement | null>(null);
@@ -219,17 +215,17 @@ export function OrganizerApp() {
     return [];
   });
   // Load tags from localStorage or start with empty array
-  const [tags, setTags] = useState<{ id: string; name: string; color: string; items: string[]; expanded: boolean }[]>(() => {
-    const savedTags = localStorage.getItem('organizerTags');
-    if (savedTags) {
-      try {
-        return JSON.parse(savedTags);
-      } catch (e) {
-        console.error('Failed to parse saved tags:', e);
-      }
-    }
-    return [];
-  });
+  // const [tags, setTags] = useState<{ id: string; name: string; color: string; items: string[]; expanded: boolean }[]>(() => {
+  //   const savedTags = localStorage.getItem('organizerTags');
+  //   if (savedTags) {
+  //     try {
+  //       return JSON.parse(savedTags);
+  //     } catch (e) {
+  //       console.error('Failed to parse saved tags:', e);
+  //     }
+  //   }
+  //   return [];
+  // });
   // Load last applied items from localStorage
   const [lastAppliedItems, setLastAppliedItems] = useState<DesktopItem[] | null>(() => {
     const saved = localStorage.getItem('organizerLastApplied');
@@ -277,14 +273,14 @@ export function OrganizerApp() {
   }, [rules]);
 
   // Save savedRules to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('organizerSavedRules', JSON.stringify(savedRules));
-  }, [savedRules]);
+  // useEffect(() => {
+  //   localStorage.setItem('organizerSavedRules', JSON.stringify(savedRules));
+  // }, [savedRules]);
 
   // Save tags to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('organizerTags', JSON.stringify(tags));
-  }, [tags]);
+  // useEffect(() => {
+  //   localStorage.setItem('organizerTags', JSON.stringify(tags));
+  // }, [tags]);
 
   // Save history to localStorage whenever they change
   useEffect(() => {
