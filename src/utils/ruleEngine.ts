@@ -40,23 +40,24 @@ export function executeRule(
     let filteredItems = filterItemsBySubject(subject, items, tags, params);
 
     // Step 2: Execute action on filtered items
-    if (action === "Sort by name") {
+    // Support both flat format ("Sort by name") and hierarchical format ("Sort > Sort by name")
+    if (action === "Sort by name" || action === "Sort > Sort by name") {
         return sortItems(filteredItems, items, 'name');
     }
 
-    if (action === "Sort by last accessed time") {
+    if (action === "Sort by last accessed time" || action === "Sort > Sort by last accessed time") {
         return sortItems(filteredItems, items, 'lastAccessed');
     }
 
-    if (action === "Sort by last modified time") {
+    if (action === "Sort by last modified time" || action === "Sort > Sort by last modified time") {
         return sortItems(filteredItems, items, 'lastModified');
     }
 
-    if (action === "Sort by type") {
+    if (action === "Sort by type" || action === "Sort > Sort by type") {
         return sortItems(filteredItems, items, 'type');
     }
 
-    if (action === "Sort by file size") {
+    if (action === "Sort by file size" || action === "Sort > Sort by file size") {
         return sortItems(filteredItems, items, 'fileSize');
     }
 
@@ -233,8 +234,28 @@ function sortItems(
                 return dateB - dateA;
             }
 
-            case 'type':
+            case 'type': {
+                // Sort by file extension instead of type field
+                const extA = getFileExtension(a);
+                const extB = getFileExtension(b);
+
+                // If both have extensions, compare them
+                if (extA && extB) {
+                    return extA.toLowerCase().localeCompare(extB.toLowerCase());
+                }
+
+                // Files without extension come after files with extension
+                // But folders (type === 'folder') come first
+                if (a.type === 'folder' && b.type !== 'folder') return -1;
+                if (a.type !== 'folder' && b.type === 'folder') return 1;
+
+                // If one has extension and other doesn't, extension comes first
+                if (extA && !extB) return -1;
+                if (!extA && extB) return 1;
+
+                // If both don't have extensions, sort by type field as fallback
                 return a.type.localeCompare(b.type);
+            }
 
             case 'fileSize': {
                 const sizeA = a.fileSize || 0;
@@ -248,7 +269,8 @@ function sortItems(
     });
 
     // Use centralized grid constants
-    const iconsPerRow = 10;
+    // Icons fill vertically first (column-by-column layout like Windows)
+    const iconsPerCol = 8;    // Maximum rows per column
 
     const occupiedPositions = new Set(
         allItems
@@ -269,10 +291,11 @@ function sortItems(
                 return { row: currentRow, col: currentCol };
             }
 
-            currentCol++;
-            if (currentCol >= iconsPerRow) {
-                currentCol = 0;
-                currentRow++;
+            // Move down first (vertical-first layout like Windows)
+            currentRow++;
+            if (currentRow >= iconsPerCol) {
+                currentRow = 0;
+                currentCol++;
             }
         }
     }
@@ -284,10 +307,11 @@ function sortItems(
 
         occupiedPositions.add(`${x},${y}`);
 
-        currentCol++;
-        if (currentCol >= iconsPerRow) {
-            currentCol = 0;
-            currentRow++;
+        // Move down first (vertical-first layout like Windows)
+        currentRow++;
+        if (currentRow >= iconsPerCol) {
+            currentRow = 0;
+            currentCol++;
         }
 
         return {
@@ -321,13 +345,15 @@ function sortItems(
  * Find first available grid position
  */
 function findFirstAvailablePosition(allItems: DesktopItem[]): { x: number; y: number } {
-    const iconsPerRow = 10;
+    const iconsPerCol = 8;   // Maximum rows per column
+    const maxColumns = 100;  // Maximum columns to search
     const occupiedPositions = new Set(
         allItems.map(item => `${item.x},${item.y}`)
     );
 
-    for (let row = 0; row < 100; row++) {
-        for (let col = 0; col < iconsPerRow; col++) {
+    // Fill vertically first (column-by-column layout like Windows)
+    for (let col = 0; col < maxColumns; col++) {
+        for (let row = 0; row < iconsPerCol; row++) {
             const x = GRID_START_X + col * GRID_WIDTH;
             const y = GRID_START_Y + row * GRID_HEIGHT;
             const posKey = `${x},${y}`;
@@ -338,8 +364,8 @@ function findFirstAvailablePosition(allItems: DesktopItem[]): { x: number; y: nu
         }
     }
 
-    // Fallback to bottom of grid
-    return { x: GRID_START_X, y: GRID_START_Y + 100 * GRID_HEIGHT };
+    // Fallback to far right of grid
+    return { x: GRID_START_X + maxColumns * GRID_WIDTH, y: GRID_START_Y };
 }
 
 /**
