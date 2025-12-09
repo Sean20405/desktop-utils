@@ -1,7 +1,6 @@
-import { useMemo } from "react";
 import { ChevronDown, GripVertical, X, Plus, Loader2, Trash2 } from "lucide-react";
 import { useDraggable, useDroppable } from "@dnd-kit/core";
-import { useSortable, SortableContext, verticalListSortingStrategy, type DragEndEvent } from "@dnd-kit/sortable";
+import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useDesktop } from "../context/DesktopContext";
 import { getAssetUrl } from "../utils/assetUtils";
@@ -228,7 +227,7 @@ type TagsPanelProps = {
     onEditChange: (value: string) => void;
     onColorChange: (id: string, color: string) => void;
     onRemoveFile: (tagId: string, fileName: string) => void;
-    onDragEnd: (event: DragEndEvent) => void;
+    // Note: onDragEnd is NOT needed here - drag handling is done via DndContext in OrganizerApp
     onGenerateTags: () => void;
     onAssignTags: () => void;
 };
@@ -247,7 +246,6 @@ export function TagsPanel({
     onEditChange,
     onColorChange,
     onRemoveFile,
-    onDragEnd,
     onGenerateTags,
     onAssignTags,
 }: TagsPanelProps) {
