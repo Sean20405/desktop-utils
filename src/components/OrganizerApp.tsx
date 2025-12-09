@@ -343,10 +343,31 @@ export function OrganizerApp() {
   };
 
   const handleSaveRule = () => {
-    if (!rules.length && !subjectSelection && !actionSelection) return;
-    const lastRule = rules.length ? rules[rules.length - 1].text : `${subjectSelection} + ${actionSelection}`;
-    setSavedRules((prev) => [{ id: `saved-${Date.now()}`, text: lastRule }, ...prev]);
-  };
+      // 如果規則列表是空的，就不儲存
+      if (rules.length === 0) {
+        alert("目前沒有任何規則可以儲存");
+        return;
+      }
+
+      // 跳出命名視窗
+      const defaultName = `My Rule Set ${savedRules.length + 1}`;
+      const ruleName = window.prompt("請為此規則組合輸入名稱:", defaultName);
+
+      if (ruleName === null) return; // 使用者按取消
+
+      const finalName = ruleName.trim() || defaultName;
+
+      // 建立一個包含當前所有規則的物件
+      const newSavedRule: SimpleRule = {
+        id: `saved-${Date.now()}`,
+        name: finalName,
+        text: `${rules.length} rules`, // 這裡的 text 僅作顯示用途(fallback)
+        // 關鍵：將目前的 rules 陣列完整複製一份存起來
+        rules: [...rules] 
+      };
+
+      setSavedRules((prev) => [newSavedRule, ...prev]);
+    };
 
   const handleRuleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -368,8 +389,25 @@ export function OrganizerApp() {
     }
   };
 
-  const addSavedToApplied = (text: string) => {
-    setRules((prev) => [...prev, { id: `rule-${Date.now()}`, text }]);
+  // 注意：這裡的參數從 text 改為 rule 物件，因為我們需要存取內部的 rules 陣列
+  const addSavedToApplied = (savedItem: SimpleRule) => {
+    if (savedItem.rules && savedItem.rules.length > 0) {
+      // 情況 A: 這是一個規則群組（包含多條規則）
+      // 我們需要為每條規則生成新的 ID，避免 ID 衝突
+      const newRules = savedItem.rules.map(r => ({
+        id: `rule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        text: r.text
+      }));
+      
+      // 將整組規則加入到現有列表的後方
+      setRules((prev) => [...prev, ...newRules]);
+    } else {
+      // 情況 B: 舊的單一規則或是手動建立的單一規則
+      setRules((prev) => [...prev, { 
+        id: `rule-${Date.now()}`, 
+        text: savedItem.text 
+      }]);
+    }
   };
 
   const deleteSavedRule = (id: string) => {
