@@ -14,6 +14,7 @@ import { TagsPanel } from './OrganizerTag';
 import { RulesPanel, SavedRulesPanel } from './OrganizerRule';
 import { getSubjectOptionsWithTags, getActionOptionsWithFolders } from './OrganizerConstants';
 import { getAssetUrl } from "../utils/assetUtils";
+import { generateThumbnail } from "../utils/thumbnailUtils";
 
 
 // Draggable Preview File Component
@@ -229,10 +230,31 @@ export function OrganizerApp() {
     }
     return [];
   });
+  // Load last applied items from localStorage
+  const [lastAppliedItems, setLastAppliedItems] = useState<DesktopItem[] | null>(() => {
+    const saved = localStorage.getItem('organizerLastApplied');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse saved last applied items:', e);
+      }
+    }
+    return null;
+  });
+
+  // Save last applied items to localStorage whenever they change
+  useEffect(() => {
+    if (lastAppliedItems) {
+      localStorage.setItem('organizerLastApplied', JSON.stringify(lastAppliedItems));
+    }
+  }, [lastAppliedItems]);
+
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [isGeneratingTags, setIsGeneratingTags] = useState(false);
   const [isAssigningTags, setIsAssigningTags] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
   const [showApiKeyDialog, setShowApiKeyDialog] = useState(false);
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [pendingAction, setPendingAction] = useState<"generate" | "assign" | null>(null);
@@ -273,6 +295,17 @@ export function OrganizerApp() {
   useEffect(() => {
     localStorage.setItem('organizerFolders', JSON.stringify(folders));
   }, [folders]);
+
+  const handleRollback = (id: string) => {
+    const entry = historyItems.find((item) => item.id === id);
+    if (entry && entry.items) {
+      setItems(entry.items);
+      return true;
+    } else {
+      alert('無法還原：找不到該歷史紀錄或該紀錄無備份資料');
+      return false;
+    }
+  };
 
   const toggleHistoryStar = (id: string) => {
     setHistoryItems((prev) =>
@@ -343,10 +376,31 @@ export function OrganizerApp() {
   };
 
   const handleSaveRule = () => {
-    if (!rules.length && !subjectSelection && !actionSelection) return;
-    const lastRule = rules.length ? rules[rules.length - 1].text : `${subjectSelection} + ${actionSelection}`;
-    setSavedRules((prev) => [{ id: `saved-${Date.now()}`, text: lastRule }, ...prev]);
-  };
+      // 如果規則列表是空的，就不儲存
+      if (rules.length === 0) {
+        alert("目前沒有任何規則可以儲存");
+        return;
+      }
+
+      // 跳出命名視窗
+      const defaultName = `My Rule Set ${savedRules.length + 1}`;
+      const ruleName = window.prompt("請為此規則組合輸入名稱:", defaultName);
+
+      if (ruleName === null) return; // 使用者按取消
+
+      const finalName = ruleName.trim() || defaultName;
+
+      // 建立一個包含當前所有規則的物件
+      const newSavedRule: SimpleRule = {
+        id: `saved-${Date.now()}`,
+        name: finalName,
+        text: `${rules.length} rules`, // 這裡的 text 僅作顯示用途(fallback)
+        // 關鍵：將目前的 rules 陣列完整複製一份存起來
+        rules: [...rules] 
+      };
+
+      setSavedRules((prev) => [newSavedRule, ...prev]);
+    };
 
   const handleRuleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -368,8 +422,25 @@ export function OrganizerApp() {
     }
   };
 
-  const addSavedToApplied = (text: string) => {
-    setRules((prev) => [...prev, { id: `rule-${Date.now()}`, text }]);
+  // 注意：這裡的參數從 text 改為 rule 物件，因為我們需要存取內部的 rules 陣列
+  const addSavedToApplied = (savedItem: SimpleRule) => {
+    if (savedItem.rules && savedItem.rules.length > 0) {
+      // 情況 A: 這是一個規則群組（包含多條規則）
+      // 我們需要為每條規則生成新的 ID，避免 ID 衝突
+      const newRules = savedItem.rules.map(r => ({
+        id: `rule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        text: r.text
+      }));
+      
+      // 將整組規則加入到現有列表的後方
+      setRules((prev) => [...prev, ...newRules]);
+    } else {
+      // 情況 B: 舊的單一規則或是手動建立的單一規則
+      setRules((prev) => [...prev, { 
+        id: `rule-${Date.now()}`, 
+        text: savedItem.text 
+      }]);
+    }
   };
 
   const deleteSavedRule = (id: string) => {
@@ -448,51 +519,88 @@ export function OrganizerApp() {
   };
 
   // Handle Apply
-  const handleApply = () => {
+  const handleApply = async () => {
     if (rules.length === 0) {
       alert('請先添加至少一個規則');
       return;
     }
 
-    // Execute all rules in order
-    let resultItems = [...items];
-    const descriptions: string[] = [];
+    setIsApplying(true);
 
-    for (const rule of rules) {
-      const parsed = parseRuleText(rule.text);
-      if (parsed) {
-        const context: RuleContext = {
-          items: resultItems,
-          tags: tags,
-        };
-        const result = executeRule(parsed.subject, parsed.action, context);
-        if (result) {
-          resultItems = result.items;
-          descriptions.push(result.description);
+    try {
+      // Execute all rules in order
+      let resultItems = [...items];
+      const descriptions: string[] = [];
+
+      for (const rule of rules) {
+        const parsed = parseRuleText(rule.text);
+        if (parsed) {
+          const context: RuleContext = {
+            items: resultItems,
+            tags: tags,
+          };
+          const result = executeRule(parsed.subject, parsed.action, context);
+          if (result) {
+            resultItems = result.items;
+            descriptions.push(result.description);
+          }
         }
       }
-    }
 
-    if (descriptions.length > 0) {
-      // Apply to actual desktop
-      setItems(resultItems);
-      setPreviewItems(resultItems);
-      setIsPreviewMode(false);  // Exit preview mode after applying
+      if (descriptions.length > 0) {
+        // Use a small delay to allow UI to update to loading state
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Add to history
-      const now = new Date();
-      const timeStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      const newHistoryEntry: HistoryEntry = {
-        id: `h-${Date.now()}`,
-        time: timeStr,
-        title: `Rules: ${descriptions.join(', ')}`,
-        starred: false,
-      };
-      setHistoryItems((prev) => [newHistoryEntry, ...prev]);
+        const now = new Date();
+        const timeStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-      alert('規則已成功應用!');
-    } else {
-      alert('無法執行這些規則，請檢查規則格式');
+        // 1. Save "Before" state (Manual Changes) if different from last applied
+        // If lastAppliedItems is null, we assume it's different (first run or cleared)
+        const isDifferent = !lastAppliedItems || JSON.stringify(items) !== JSON.stringify(lastAppliedItems);
+        
+        if (isDifferent) {
+          const thumbnailBefore = await generateThumbnail(items);
+          const beforeHistoryEntry: HistoryEntry = {
+            id: `h-${Date.now()}-before`,
+            time: timeStr,
+            title: `Before apply rule: ${descriptions.join(', ')}`,
+            starred: false,
+            items: items,
+            thumbnail: thumbnailBefore,
+          };
+          setHistoryItems((prev) => [beforeHistoryEntry, ...prev]);
+        }
+
+        // Apply to actual desktop FIRST to render the new state
+        setItems(resultItems);
+        setLastAppliedItems(resultItems);
+        setPreviewItems(resultItems);
+        setIsPreviewMode(false);  // Exit preview mode after applying
+
+        // Wait for DOM to update with new items
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // 2. Save "After" state (Rule Result)
+        const thumbnailAfter = await generateThumbnail(resultItems);
+        const afterHistoryEntry: HistoryEntry = {
+          id: `h-${Date.now()}-after`,
+          time: timeStr,
+          title: `Rules: ${descriptions.join(', ')}`,
+          starred: false,
+          items: resultItems,
+          thumbnail: thumbnailAfter,
+        };
+        setHistoryItems((prev) => [afterHistoryEntry, ...prev]);
+
+        alert('規則已成功應用!');
+      } else {
+        alert('無法執行這些規則，請檢查規則格式');
+      }
+    } catch (error) {
+      console.error('Error applying rules:', error);
+      alert('應用規則時發生錯誤');
+    } finally {
+      setIsApplying(false);
     }
   };
 
@@ -845,6 +953,7 @@ export function OrganizerApp() {
       onToggleMenu={(id) => setOpenRuleMenu(prev => prev === id ? null : id)}
       onPreview={handlePreview}
       onApply={handleApply}
+      isApplying={isApplying}
     />
   );
 
@@ -932,6 +1041,7 @@ export function OrganizerApp() {
                   historyItems={historyItems}
                   onToggleStar={toggleHistoryStar}
                   onDeleteItem={deleteHistoryItem}
+                  onRollback={handleRollback}
                 />
               )}
 
