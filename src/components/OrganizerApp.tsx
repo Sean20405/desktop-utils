@@ -230,6 +230,26 @@ export function OrganizerApp() {
     }
     return [];
   });
+  // Load last applied items from localStorage
+  const [lastAppliedItems, setLastAppliedItems] = useState<DesktopItem[] | null>(() => {
+    const saved = localStorage.getItem('organizerLastApplied');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse saved last applied items:', e);
+      }
+    }
+    return null;
+  });
+
+  // Save last applied items to localStorage whenever they change
+  useEffect(() => {
+    if (lastAppliedItems) {
+      localStorage.setItem('organizerLastApplied', JSON.stringify(lastAppliedItems));
+    }
+  }, [lastAppliedItems]);
+
   const [editingTagId, setEditingTagId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
   const [isGeneratingTags, setIsGeneratingTags] = useState(false);
@@ -528,28 +548,49 @@ export function OrganizerApp() {
       }
 
       if (descriptions.length > 0) {
-        // Generate thumbnail for the OLD state (items)
         // Use a small delay to allow UI to update to loading state
         await new Promise(resolve => setTimeout(resolve, 100));
-        const thumbnail = await generateThumbnail(items);
 
-        // Apply to actual desktop
+        const now = new Date();
+        const timeStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+        // 1. Save "Before" state (Manual Changes) if different from last applied
+        // If lastAppliedItems is null, we assume it's different (first run or cleared)
+        const isDifferent = !lastAppliedItems || JSON.stringify(items) !== JSON.stringify(lastAppliedItems);
+        
+        if (isDifferent) {
+          const thumbnailBefore = await generateThumbnail(items);
+          const beforeHistoryEntry: HistoryEntry = {
+            id: `h-${Date.now()}-before`,
+            time: timeStr,
+            title: `Before apply rule: ${descriptions.join(', ')}`,
+            starred: false,
+            items: items,
+            thumbnail: thumbnailBefore,
+          };
+          setHistoryItems((prev) => [beforeHistoryEntry, ...prev]);
+        }
+
+        // Apply to actual desktop FIRST to render the new state
         setItems(resultItems);
+        setLastAppliedItems(resultItems);
         setPreviewItems(resultItems);
         setIsPreviewMode(false);  // Exit preview mode after applying
 
-        // Add to history
-        const now = new Date();
-        const timeStr = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-        const newHistoryEntry: HistoryEntry = {
-          id: `h-${Date.now()}`,
+        // Wait for DOM to update with new items
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // 2. Save "After" state (Rule Result)
+        const thumbnailAfter = await generateThumbnail(resultItems);
+        const afterHistoryEntry: HistoryEntry = {
+          id: `h-${Date.now()}-after`,
           time: timeStr,
           title: `Rules: ${descriptions.join(', ')}`,
           starred: false,
-          items: items,
-          thumbnail: thumbnail,
+          items: resultItems,
+          thumbnail: thumbnailAfter,
         };
-        setHistoryItems((prev) => [newHistoryEntry, ...prev]);
+        setHistoryItems((prev) => [afterHistoryEntry, ...prev]);
 
         alert('規則已成功應用!');
       } else {

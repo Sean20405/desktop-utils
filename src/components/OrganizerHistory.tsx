@@ -36,7 +36,7 @@ export function HistoryPanel({ historyItems, onToggleStar, onDeleteItem, onRollb
                         >
                             <div className="flex items-start justify-between">
                                 <div>
-                                    <h3 className="font-semibold text-sm">{item.title}</h3>
+                                    <h3 className="font-semibold text-sm/snug">{item.title}</h3>
                                     <p className="text-xs text-gray-500">{item.time}</p>
                                 </div>
                                 <button
