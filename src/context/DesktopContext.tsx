@@ -8,6 +8,11 @@ export interface DesktopItem {
   x: number;
   y: number;
   imageUrl?: string;
+  path?: string;
+  lastAccessed?: string; // ISO 8601 date string
+  lastModified?: string; // ISO 8601 date string
+  createdTime?: string;  // ISO 8601 date string
+  fileSize?: number;     // File size in bytes
 }
 
 export interface Size {
@@ -35,21 +40,21 @@ export function DesktopProvider({ children }: { children: ReactNode }) {
   const [referenceSize, setReferenceSize] = useState<Size>({ width: 1920, height: 1080 });
 
   const updateItemPosition = (id: string, x: number, y: number) => {
-    setItems(prev => prev.map(item => 
+    setItems(prev => prev.map(item =>
       item.id === id ? { ...item, x, y } : item
     ));
   };
 
   return (
-    <DesktopContext.Provider value={{ 
-      items, 
-      background, 
-      isLoaded, 
+    <DesktopContext.Provider value={{
+      items,
+      background,
+      isLoaded,
       referenceSize,
-      setItems, 
-      setIsLoaded, 
+      setItems,
+      setIsLoaded,
       setReferenceSize,
-      updateItemPosition 
+      updateItemPosition
     }}>
       {children}
     </DesktopContext.Provider>

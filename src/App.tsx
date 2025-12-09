@@ -7,6 +7,8 @@ import { Taskbar } from './components/Taskbar';
 import { SearchBar } from './components/SearchBar';
 import { UploadScreen } from './components/UploadScreen';
 import { loadDebugData } from './utils/debugUtils';
+import { GRID_WIDTH, GRID_HEIGHT, GRID_START_X, GRID_START_Y } from './constants/gridConstants';
+import { findNearestAvailablePosition } from './utils/gridUtils';
 
 const SKIP_UPLOAD = true; // Set to true to skip upload screen for debugging
 
@@ -80,12 +82,12 @@ function App() {
 
   if (!isLoaded) {
     return (
-      <UploadScreen 
+      <UploadScreen
         onDataLoaded={(newItems, size) => {
           setItems(newItems);
           setReferenceSize(size);
           setIsLoaded(true);
-        }} 
+        }}
       />
     );
   }
@@ -113,11 +115,24 @@ function App() {
       const item = items.find(i => i.id === iconId);
       if (item) {
         const TASKBAR_HEIGHT = 48;
-        
+
+        // Calculate responsive scaling ratio
         const ratioX = windowSize.width / referenceSize.width;
         const ratioY = Math.max(0, windowSize.height - TASKBAR_HEIGHT) / Math.max(1, referenceSize.height - TASKBAR_HEIGHT);
 
-        updateItemPosition(iconId, item.x + delta.x / ratioX, item.y + delta.y / ratioY);
+        // Apply delta with scaling
+        const newX = item.x + delta.x / ratioX;
+        const newY = item.y + delta.y / ratioY;
+
+        // Find nearest available position (prevents overlaps)
+        const { x: finalX, y: finalY } = findNearestAvailablePosition(
+          newX,
+          newY,
+          iconId,
+          items
+        );
+
+        updateItemPosition(iconId, finalX, finalY);
       }
     }
   };

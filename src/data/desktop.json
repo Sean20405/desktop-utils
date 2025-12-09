@@ -1,10 +1,65 @@
 {
   "background": "https://images.unsplash.com/photo-1477346611705-65d1883cee1e?auto=format&fit=crop&q=80&w=2070",
   "icons": [
-    { "id": "organizer", "label": "Organizer", "type": "app", "x": 20, "y": 20, "imageUrl": "/icons/organizer.svg" },
-    { "id": "docs", "label": "Documents", "type": "folder", "x": 20, "y": 110, "imageUrl": "/icons/documents.svg" },
-    { "id": "settings", "label": "Settings", "type": "settings", "x": 20, "y": 200, "imageUrl": "/icons/settings.svg" },
-    { "id": "notes", "label": "Notes.txt", "type": "file", "x": 110, "y": 20, "imageUrl": "/icons/notes.svg" },
-    { "id": "photo", "label": "Photo.jpg", "type": "image", "x": 110, "y": 110, "imageUrl": "/icons/photo.svg" }
+    {
+      "id": "organizer",
+      "label": "Organizer",
+      "type": "app",
+      "x": 20,
+      "y": 20,
+      "imageUrl": "/icons/organizer.svg",
+      "lastAccessed": "2025-12-08T14:30:00+08:00",
+      "lastModified": "2025-11-15T09:20:00+08:00",
+      "createdTime": "2025-10-01T08:00:00+08:00",
+      "fileSize": 524288
+    },
+    {
+      "id": "docs",
+      "label": "Documents",
+      "type": "folder",
+      "x": 20,
+      "y": 110,
+      "imageUrl": "/icons/documents.svg",
+      "lastAccessed": "2025-12-07T16:45:00+08:00",
+      "lastModified": "2025-12-05T11:30:00+08:00",
+      "createdTime": "2025-09-20T10:00:00+08:00",
+      "fileSize": 0
+    },
+    {
+      "id": "settings",
+      "label": "Settings",
+      "type": "settings",
+      "x": 20,
+      "y": 200,
+      "imageUrl": "/icons/settings.svg",
+      "lastAccessed": "2025-12-06T12:00:00+08:00",
+      "lastModified": "2025-11-01T14:15:00+08:00",
+      "createdTime": "2025-09-15T09:00:00+08:00",
+      "fileSize": 102400
+    },
+    {
+      "id": "notes",
+      "label": "Notes.txt",
+      "type": "file",
+      "x": 110,
+      "y": 20,
+      "imageUrl": "/icons/notes.svg",
+      "lastAccessed": "2025-12-08T10:20:00+08:00",
+      "lastModified": "2025-12-07T22:15:00+08:00",
+      "createdTime": "2025-11-25T13:30:00+08:00",
+      "fileSize": 2048
+    },
+    {
+      "id": "photo",
+      "label": "Photo.jpg",
+      "type": "image",
+      "x": 110,
+      "y": 110,
+      "imageUrl": "/icons/photo.svg",
+      "lastAccessed": "2025-12-05T18:30:00+08:00",
+      "lastModified": "2025-12-01T15:45:00+08:00",
+      "createdTime": "2025-11-28T16:20:00+08:00",
+      "fileSize": 1572864
+    }
   ]
 }
