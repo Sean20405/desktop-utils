@@ -26,18 +26,18 @@ export function HistoryPanel({ historyItems, onToggleStar, onDeleteItem, onRollb
     });
 
     return (
-        <div className="flex flex-col h-full p-4 gap-4 overflow-hidden">
+        <div className="flex flex-col h-full p-2 gap-4 overflow-hidden">
             <div className="flex-1 overflow-y-auto">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {sortedItems.map((item) => (
                         <div
                             key={item.id}
-                            className="border border-gray-200 rounded-xl shadow-sm bg-white p-3 flex flex-col gap-2"
+                            className="border border-gray-200 rounded-xl shadow-sm bg-white p-2.5 flex flex-col gap-1.5 h-full"
                         >
-                            <div className="flex items-start justify-between">
+                            <div className="flex items-start justify-between flex-1">
                                 <div>
-                                    <h3 className="font-semibold text-sm/snug">{item.title}</h3>
-                                    <p className="text-xs text-gray-500">{item.time}</p>
+                                    <h3 className="font-semibold text-sm">{item.title}</h3>
+                                    <p className="mt-1 text-xs text-gray-500">{item.time}</p>
                                 </div>
                                 <button
                                     className={`cursor-pointer active:scale-95 p-1 rounded transition-colors ${item.starred
@@ -65,7 +65,7 @@ export function HistoryPanel({ historyItems, onToggleStar, onDeleteItem, onRollb
                             </div>
                             <div className="flex gap-2">
                                 <button 
-                                    className={`cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg transition-all duration-300 ${
+                                    className={`cursor-pointer active:scale-95 flex-1 py-1 text-sm border rounded-lg transition-all duration-300 ${
                                         successId === item.id 
                                         ? "bg-green-50 border-green-200 text-green-600" 
                                         : "bg-white hover:bg-gray-50"
@@ -75,7 +75,7 @@ export function HistoryPanel({ historyItems, onToggleStar, onDeleteItem, onRollb
                                 >
                                     {successId === item.id ? (
                                         <span className="flex items-center justify-center gap-1 animate-in fade-in zoom-in duration-300">
-                                            <Check size={16} />
+                                            <Check size={14} />
                                             Done
                                         </span>
                                     ) : (
@@ -83,7 +83,7 @@ export function HistoryPanel({ historyItems, onToggleStar, onDeleteItem, onRollb
                                     )}
                                 </button>
                                 <button
-                                    className="cursor-pointer active:scale-95 flex-1 py-2 border rounded-lg bg-white hover:bg-red-50 text-red-600"
+                                    className="cursor-pointer active:scale-95 flex-1 py-1 text-sm border rounded-lg bg-white hover:bg-red-50 text-red-600"
                                     onClick={() => onDeleteItem(item.id)}
                                 >
                                     Delete
