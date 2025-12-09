@@ -274,6 +274,17 @@ export function OrganizerApp() {
     localStorage.setItem('organizerFolders', JSON.stringify(folders));
   }, [folders]);
 
+  const handleRollback = (id: string) => {
+    const entry = historyItems.find((item) => item.id === id);
+    if (entry && entry.items) {
+      setItems(entry.items);
+      return true;
+    } else {
+      alert('無法還原：找不到該歷史紀錄或該紀錄無備份資料');
+      return false;
+    }
+  };
+
   const toggleHistoryStar = (id: string) => {
     setHistoryItems((prev) =>
       prev.map((item) => (item.id === id ? { ...item, starred: !item.starred } : item))
@@ -487,6 +498,7 @@ export function OrganizerApp() {
         time: timeStr,
         title: `Rules: ${descriptions.join(', ')}`,
         starred: false,
+        items: items,
       };
       setHistoryItems((prev) => [newHistoryEntry, ...prev]);
 
@@ -934,6 +946,7 @@ export function OrganizerApp() {
                   historyItems={historyItems}
                   onToggleStar={toggleHistoryStar}
                   onDeleteItem={deleteHistoryItem}
+                  onRollback={handleRollback}
                 />
               )}
             </div>

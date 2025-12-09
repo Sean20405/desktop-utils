@@ -1,3 +1,5 @@
+import type { DesktopItem } from '../context/DesktopContext';
+
 export type HierarchyNode = {
     label: string;
     children?: HierarchyNode[]
@@ -13,7 +15,8 @@ export type HistoryEntry = {
     time: string;
     title: string;
     starred: boolean;
-    thumbnail?: string
+    thumbnail?: string;
+    items: DesktopItem[];
 };
 
 export type TagItem = {
