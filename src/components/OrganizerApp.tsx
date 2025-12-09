@@ -497,7 +497,7 @@ export function OrganizerApp() {
   };
 
   const createNewTag = () => {
-    let baseName = "NewTag";
+    const baseName = "NewTag";
     let counter = 0;
     let newName = baseName;
 
@@ -866,8 +866,8 @@ export function OrganizerApp() {
     <DndContext onDragEnd={handleTagDragEnd}>
       <div className="h-full flex flex-col bg-[#d8d8d8] p-4 gap-4 text-gray-900">
         <div className="flex flex-1 gap-4 min-h-0">
-          <div className="flex-[4] flex flex-col min-w-[520px]">
-            <div className="h-full rounded-2xl overflow-hidden shadow-inner border border-gray-500 bg-gradient-to-b from-gray-800 to-gray-700">
+          <div className="flex-4 flex flex-col min-w-[520px]">
+            <div className="h-full rounded-2xl overflow-hidden shadow-inner border border-gray-500 bg-linear-to-b from-gray-800 to-gray-700">
               <DesktopPreview previewItems={previewItems} isPreviewMode={isPreviewMode} />
             </div>
           </div>
