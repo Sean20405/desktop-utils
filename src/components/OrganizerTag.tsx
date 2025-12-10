@@ -230,6 +230,7 @@ type TagsPanelProps = {
     // Note: onDragEnd is NOT needed here - drag handling is done via DndContext in OrganizerApp
     onGenerateTags: () => void;
     onAssignTags: () => void;
+    onDeleteAllTags: () => void;
 };
 
 export function TagsPanel({
@@ -248,6 +249,7 @@ export function TagsPanel({
     onRemoveFile,
     onGenerateTags,
     onAssignTags,
+    onDeleteAllTags,
 }: TagsPanelProps) {
     return (
         <div className="flex flex-col h-full gap-4 p-4 overflow-hidden">
@@ -312,7 +314,10 @@ export function TagsPanel({
                 </button>
             </div>
 
-            <button className="cursor-pointer active:scale-95 p-2 text-red-600 border rounded-lg flex items-center justify-center gap-2 hover:bg-red-50 shrink-0">
+            <button
+                onClick={onDeleteAllTags}
+                className="cursor-pointer active:scale-95 p-2 text-red-600 border rounded-lg flex items-center justify-center gap-2 hover:bg-red-50 shrink-0"
+            >
                 <Trash2 size={18} /> Delete All Tags
             </button>
         </div>

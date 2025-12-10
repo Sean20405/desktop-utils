@@ -612,6 +612,13 @@ export function OrganizerApp({
     setTags((prev) => prev.filter((tag) => tag.id !== id));
   };
 
+  const deleteAllTags = () => {
+    if (tags.length === 0) return;
+    if (window.confirm(`確定要刪除所有 ${tags.length} 個標籤嗎？`)) {
+      setTags([]);
+    }
+  };
+
   const removeFileFromTag = (tagId: string, fileName: string) => {
     setTags((prev) =>
       prev.map((tag) => {
@@ -1015,6 +1022,7 @@ export function OrganizerApp({
                   onRemoveFile={removeFileFromTag}
                   onGenerateTags={handleAIGenerateTags}
                   onAssignTags={handleAIAssignTags}
+                  onDeleteAllTags={deleteAllTags}
                 />
               )}
 
