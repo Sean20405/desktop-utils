@@ -4,7 +4,7 @@ import { useDesktop } from "../context/DesktopContext";
 import { DndContext, type DragEndEvent, useDraggable } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { generateTagsFromFiles, assignFilesToTags, hasGeminiApiKey, setGeminiApiKey } from "../utils/geminiApi";
+import { assignFilesToTags, generateAndAssignTags, hasGeminiApiKey, setGeminiApiKey } from "../utils/geminiApi";
 import { executeRule, parseRuleText } from "../utils/ruleEngine";
 import type { RuleContext } from "../utils/ruleEngine";
 import type { SimpleRule, HistoryEntry, TagItem } from './OrganizerTypes';
@@ -770,7 +770,7 @@ export function OrganizerApp({
     }, 0);
   };
 
-  // AI Generate Tag 功能
+  // AI Generate Tag 功能（現在會同時分配檔案）
   const handleAIGenerateTags = async () => {
     if (isGeneratingTags) return;
 
@@ -783,7 +783,7 @@ export function OrganizerApp({
 
     setIsGeneratingTags(true);
     try {
-      // 獲取桌面上的所有檔案（排除 "ALL" 標籤）
+      // 獲取桌面上的所有檔案
       const desktopFiles = items.map(item => ({
         id: item.id,
         label: item.label,
@@ -795,29 +795,60 @@ export function OrganizerApp({
         return;
       }
 
-      // 調用 Gemini API 生成標籤
-      const generatedTags = await generateTagsFromFiles(desktopFiles);
+      // 調用 Gemini API 生成標籤並同時分配檔案
+      const result = await generateAndAssignTags(desktopFiles);
 
       // 將生成的標籤添加到現有標籤列表（排除 "ALL" 標籤）
       const existingTagNames = tags.filter(t => t.id !== 'all').map(t => t.name.toLowerCase());
-      const newTags = generatedTags
+      const newTags = result.tags
         .filter(tag => !existingTagNames.includes(tag.name.toLowerCase()))
         .map(tag => ({
           id: `tag-${Date.now()}-${Math.random()}`,
           name: tag.name,
           color: tag.color || '#fb923c',
           items: [],
-          expanded: true,
+          expanded: false,
         }));
 
       if (newTags.length > 0) {
+        // 先添加新標籤
         setTags(prev => {
           // 保留 "ALL" 標籤在第一位，其他標籤在後面
           const allTag = prev.find(t => t.id === 'all');
           const otherTags = prev.filter(t => t.id !== 'all');
           return allTag ? [allTag, ...otherTags, ...newTags] : [...otherTags, ...newTags];
         });
-        alert(`成功生成 ${newTags.length} 個新標籤！`);
+
+        // 然後應用分配結果
+        setTimeout(() => {
+          setTags(prev => {
+            return prev.map(tag => {
+              if (tag.id === 'all') {
+                // 更新 ALL 標籤，包含所有桌面檔案
+                const allFileNames = items.map(item => item.label);
+                return { ...tag, items: allFileNames };
+              }
+
+              // 找到對應的分配結果
+              const assignment = result.assignments.find(a => a.tagName === tag.name);
+              if (assignment && assignment.files.length > 0) {
+                // 合併現有檔案和新分配的檔案，去重
+                const mergedItems = Array.from(new Set([...tag.items, ...assignment.files]));
+                return { ...tag, items: mergedItems };
+              }
+
+              return tag;
+            });
+          });
+
+          // 統計分配結果
+          const totalAssignments = result.assignments.reduce((sum, a) => sum + a.files.length, 0);
+          const uniqueFilesAssigned = new Set(
+            result.assignments.flatMap(a => a.files)
+          ).size;
+          
+          alert(`成功生成 ${newTags.length} 個新標籤並分配檔案！\n\n共對 ${uniqueFilesAssigned} 個檔案分配了 ${totalAssignments} 個標籤。`);
+        }, 0);
       } else {
         alert('沒有生成新的標籤（可能所有標籤都已存在）');
       }
