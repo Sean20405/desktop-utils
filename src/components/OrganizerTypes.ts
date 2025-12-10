@@ -10,6 +10,7 @@ export type SimpleRule = {
     text: string
     name?: string // 規則自訂名稱
     rules?: SimpleRule[]; // 新增：用於儲存一整組規則的陣列
+    selectedRegion?: { x: number; y: number; width: number; height: number } | null; // 區域選取信息
 };
 
 export type HistoryEntry = {

@@ -8,6 +8,7 @@ import type { SimpleRule, TagItem, HistoryEntry } from './OrganizerTypes';
 import { executeRule, parseRuleText } from "../utils/ruleEngine";
 // import { parseRuleText } from "../utils/ruleEngine";
 import type { RuleContext } from "../utils/ruleEngine";
+import type { DesktopItem } from '../context/DesktopContext';
 import { GRID_WIDTH, GRID_HEIGHT, GRID_START_X, GRID_START_Y, shufflePositions } from '../constants/gridConstants';
 
 interface DesktopProps {
@@ -78,26 +79,55 @@ export function Desktop({ onOpenWindow, searchQuery, savedRules, tags, historyIt
         return;
       }
 
+      // 過濾區域內的檔案（如果需要）
+      const filterItemsByRegion = (itemsToFilter: DesktopItem[], region: { x: number; y: number; width: number; height: number } | null): DesktopItem[] => {
+        if (!region) return itemsToFilter;
+        
+        const iconWidth = 100;
+        const iconHeight = 110;
+        
+        return itemsToFilter.filter(item => {
+          const itemX = item.x;
+          const itemY = item.y;
+          const itemRight = itemX + iconWidth;
+          const itemBottom = itemY + iconHeight;
+          
+          return itemX >= region.x && 
+                 itemRight <= region.x + region.width &&
+                 itemY >= region.y && 
+                 itemBottom <= region.y + region.height;
+        });
+      };
+
       // Execute all rules in the set sequentially
       let resultItems = [...items];
       let success = false;
+      const savedRegion = ruleSet.selectedRegion;
 
       for (const rule of ruleSet.rules) {
         const parsed = parseRuleText(rule.text);
         if (parsed) {
-          // console.log('Parsed rule:', parsed);
+          // 如果保存的規則有區域選取，只對區域內的檔案執行規則
           const context: RuleContext = {
-            items: resultItems,
-            tags: tags
+            items: savedRegion ? filterItemsByRegion(resultItems, savedRegion) : resultItems,
+            tags: tags,
+            selectedRegion: savedRegion,
           };
-
-          // console.log('Executing rule with context:', context);
 
           const result = executeRule(parsed.subject, parsed.action, context);
 
           console.log('Rule execution result:', result);
           if (result) {
-            resultItems = result.items;
+            // 合併結果：保留區域外的檔案，更新區域內的檔案
+            if (savedRegion) {
+              const regionItems = filterItemsByRegion(resultItems, savedRegion);
+              const nonRegionItems = resultItems.filter(item => 
+                !regionItems.some(ri => ri.id === item.id)
+              );
+              resultItems = [...nonRegionItems, ...result.items];
+            } else {
+              resultItems = result.items;
+            }
             success = true;
           }
         }

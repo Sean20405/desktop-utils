@@ -513,6 +513,7 @@ function SavedRuleItem({
 // 判斷是否為群組
     const isGroup = rule.rules && rule.rules.length > 0;
     const ruleCount = isGroup ? rule.rules!.length : 1;
+    const hasRegion = !!rule.selectedRegion;
 
     return (
         <div className="rounded-lg border border-gray-200 bg-white shadow-sm px-3 py-3 flex items-start justify-between relative group hover:border-blue-300 transition-colors">
@@ -525,6 +526,11 @@ function SavedRuleItem({
                     {isGroup && (
                         <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium flex-shrink-0">
                             {ruleCount} rules
+                        </span>
+                    )}
+                    {hasRegion && (
+                        <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded-full font-medium flex-shrink-0" title="包含區域選取">
+                            區域
                         </span>
                     )}
                 </div>

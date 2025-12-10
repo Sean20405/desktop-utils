@@ -46,37 +46,37 @@ function DraggablePreviewFile({
       className={`absolute flex flex-col items-center gap-1 p-1 w-20 cursor-grab active:cursor-grabbing transition-all ${
         isSelected ? 'ring-2 ring-blue-500 ring-offset-1 bg-blue-500/20 rounded' : ''
       }`}
-      style={{
-        left: item.x * scale,
-        top: item.y * scale,
+              style={{
+                left: item.x * scale,
+                top: item.y * scale,
         transform: dragStyle ? `${dragStyle} scale(${scale})` : `scale(${scale})`,
-        transformOrigin: "top left",
+                transformOrigin: "top left",
         opacity: isDragging ? 0.5 : 1,
-      }}
-    >
+              }}
+            >
       <div className="w-12 h-12 flex items-center justify-center">
-        {iconSrc ? (
-          <img
-            src={iconSrc}
-            alt={item.label}
+                {iconSrc ? (
+                  <img
+                    src={iconSrc}
+                    alt={item.label}
             className="w-full h-full object-contain drop-shadow pointer-events-none"
-            onError={(e) => {
-              e.currentTarget.onerror = null;
-              e.currentTarget.src = `${import.meta.env.BASE_URL || "/"}icons/organizer.svg`;
-            }}
-          />
-        ) : (
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = `${import.meta.env.BASE_URL || "/"}icons/organizer.svg`;
+                    }}
+                  />
+                ) : (
           <div className="w-full h-full bg-gray-400/50 rounded-lg flex items-center justify-center backdrop-blur-sm">
             <Monitor className="w-8 h-8 text-white/80" />
           </div>
-        )}
-      </div>
+                )}
+              </div>
       <div
         className="text-white text-xs font-normal drop-shadow-md text-center select-none px-1 rounded-sm line-clamp-2"
         style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
       >
         {item.label}
-      </div>
+              </div>
     </div>
   );
 }
@@ -233,8 +233,8 @@ function DesktopPreview({
         {selectedRegion && (
           <div className="absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
             已選擇區域
-          </div>
-        )}
+        </div>
+      )}
       </div>
     </div>
   );
@@ -437,7 +437,11 @@ export function OrganizerApp({
     }
 
     const text = `${finalSubject} + ${finalAction}`;
-    setRules((prev) => [...prev, { id: `rule-${Date.now()}`, text }]);
+    setRules((prev) => [...prev, { 
+      id: `rule-${Date.now()}`, 
+      text,
+      selectedRegion: selectedRegion, // 將當前區域選取保存到規則對象
+    }]);
     setSubjectSelection("");
     setActionSelection("");
     setPatternInput("");
@@ -465,16 +469,23 @@ export function OrganizerApp({
       const finalName = ruleName.trim() || defaultName;
 
       // 建立一個包含當前所有規則的物件
+      // 規則對象已經包含各自的區域信息，所以直接複製即可
       const newSavedRule: SimpleRule = {
         id: `saved-${Date.now()}`,
         name: finalName,
         text: `${rules.length} rules`, // 這裡的 text 僅作顯示用途(fallback)
-        // 關鍵：將目前的 rules 陣列完整複製一份存起來
-        rules: [...rules] 
+        // 關鍵：將目前的 rules 陣列完整複製一份存起來（包含各自的區域信息）
+        rules: rules.map(rule => ({
+          ...rule,
+          // 確保每個規則都包含區域信息（如果有的話）
+          selectedRegion: rule.selectedRegion ?? selectedRegion,
+        })),
+        // 保存全局區域選取作為後備（向後兼容）
+        selectedRegion: selectedRegion,
       };
 
       setSavedRules((prev) => [newSavedRule, ...prev]);
-    };
+  };
 
   const handleRuleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -501,19 +512,34 @@ export function OrganizerApp({
     if (savedItem.rules && savedItem.rules.length > 0) {
       // 情況 A: 這是一個規則群組（包含多條規則）
       // 我們需要為每條規則生成新的 ID，避免 ID 衝突
+      // 保留規則對象中的區域信息
       const newRules = savedItem.rules.map(r => ({
         id: `rule-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        text: r.text
+        text: r.text,
+        // 保留規則的區域信息，如果沒有則使用保存規則的全局區域（向後兼容）
+        selectedRegion: r.selectedRegion ?? savedItem.selectedRegion,
       }));
       
       // 將整組規則加入到現有列表的後方
       setRules((prev) => [...prev, ...newRules]);
+      
+      // 如果有全局區域選取，也設置到組件狀態（用於 UI 顯示）
+      if (savedItem.selectedRegion) {
+        setSelectedRegion(savedItem.selectedRegion);
+      }
     } else {
       // 情況 B: 舊的單一規則或是手動建立的單一規則
       setRules((prev) => [...prev, { 
         id: `rule-${Date.now()}`, 
-        text: savedItem.text 
+        text: savedItem.text,
+        // 保留區域信息
+        selectedRegion: savedItem.selectedRegion,
       }]);
+      
+      // 如果有區域選取，設置到組件狀態（用於 UI 顯示）
+      if (savedItem.selectedRegion) {
+        setSelectedRegion(savedItem.selectedRegion);
+      }
     }
   };
 
@@ -600,17 +626,20 @@ export function OrganizerApp({
     for (const rule of rules) {
       const parsed = parseRuleText(rule.text);
       if (parsed) {
+        // 從規則對象讀取區域信息，如果沒有則使用全局的 selectedRegion（向後兼容）
+        const ruleRegion = rule.selectedRegion ?? selectedRegion;
+        
         // 如果有限定區域，只對區域內的檔案執行規則
         const context: RuleContext = {
-          items: selectedRegion ? filterItemsByRegion(resultItems, selectedRegion) : resultItems,
+          items: ruleRegion ? filterItemsByRegion(resultItems, ruleRegion) : resultItems,
           tags: tags,
-          selectedRegion: selectedRegion,
+          selectedRegion: ruleRegion,
         };
         const result = executeRule(parsed.subject, parsed.action, context);
         if (result) {
           // 合併結果：保留區域外的檔案，更新區域內的檔案
-          if (selectedRegion) {
-            const regionItems = filterItemsByRegion(resultItems, selectedRegion);
+          if (ruleRegion) {
+            const regionItems = filterItemsByRegion(resultItems, ruleRegion);
             const nonRegionItems = resultItems.filter(item => 
               !regionItems.some(ri => ri.id === item.id)
             );
@@ -648,17 +677,20 @@ export function OrganizerApp({
       for (const rule of rules) {
         const parsed = parseRuleText(rule.text);
         if (parsed) {
+          // 從規則對象讀取區域信息，如果沒有則使用全局的 selectedRegion（向後兼容）
+          const ruleRegion = rule.selectedRegion ?? selectedRegion;
+          
           // 如果有限定區域，只對區域內的檔案執行規則
           const context: RuleContext = {
-            items: selectedRegion ? filterItemsByRegion(resultItems, selectedRegion) : resultItems,
+            items: ruleRegion ? filterItemsByRegion(resultItems, ruleRegion) : resultItems,
             tags: tags,
-            selectedRegion: selectedRegion,
+            selectedRegion: ruleRegion,
           };
           const result = executeRule(parsed.subject, parsed.action, context);
           if (result) {
             // 合併結果：保留區域外的檔案，更新區域內的檔案
-            if (selectedRegion) {
-              const regionItems = filterItemsByRegion(resultItems, selectedRegion);
+            if (ruleRegion) {
+              const regionItems = filterItemsByRegion(resultItems, ruleRegion);
               const nonRegionItems = resultItems.filter(item => 
                 !regionItems.some(ri => ri.id === item.id)
               );
@@ -873,15 +905,15 @@ export function OrganizerApp({
       // 只有在 overId 是 tag.id 且不是檔案拖放時才進行排序
       const isTagId = tags.some(tag => tag.id === overId);
       if (isTagId && activeId !== overId && !activeId.startsWith("file-") && !activeId.startsWith("preview-file-")) {
-        setTags((items) => {
+      setTags((items) => {
           const oldIndex = items.findIndex((item) => item.id === activeId);
           const newIndex = items.findIndex((item) => item.id === overId);
 
           if (oldIndex !== -1 && newIndex !== -1) {
-            return arrayMove(items, oldIndex, newIndex);
+        return arrayMove(items, oldIndex, newIndex);
           }
           return items;
-        });
+      });
       }
     }
   };
@@ -896,11 +928,11 @@ export function OrganizerApp({
     setGeminiApiKey(apiKey);
     setShowApiKeyDialog(false);
     setApiKeyInput("");
-
+    
     // 執行待處理的操作（使用 setTimeout 確保 sessionStorage 已更新）
     const action = pendingAction;
     setPendingAction(null);
-
+    
     setTimeout(() => {
       if (action === "generate") {
         handleAIGenerateTags();
@@ -913,14 +945,14 @@ export function OrganizerApp({
   // AI Generate Tag 功能（現在會同時分配檔案）
   const handleAIGenerateTags = async () => {
     if (isGeneratingTags) return;
-
+    
     // 檢查是否有 API Key
     if (!hasGeminiApiKey()) {
       setPendingAction("generate");
       setShowApiKeyDialog(true);
       return;
     }
-
+    
     setIsGeneratingTags(true);
     try {
       // 獲取桌面上的所有檔案
@@ -1014,7 +1046,7 @@ export function OrganizerApp({
 
     // 排除 "ALL" 標籤
     const existingTags = tags.filter(t => t.id !== 'all');
-
+    
     if (existingTags.length === 0) {
       alert('請先創建至少一個標籤（除了 ALL）');
       return;
@@ -1135,19 +1167,19 @@ export function OrganizerApp({
 
   return (
     <DndContext onDragEnd={handleTagDragEnd}>
-      <div className="h-full flex flex-col bg-[#d8d8d8] p-4 gap-4 text-gray-900">
-        <div className="flex flex-1 gap-4 min-h-0">
+    <div className="h-full flex flex-col bg-[#d8d8d8] p-4 gap-4 text-gray-900">
+      <div className="flex flex-1 gap-4 min-h-0">
           <div className="flex-4 flex flex-col min-w-[520px]">
             <div className="h-full rounded-2xl overflow-hidden shadow-inner border border-gray-500 bg-linear-to-b from-gray-800 to-gray-700 relative">
               {selectedRegion && (
-                <button
+                    <button
                   onClick={() => setSelectedRegion(null)}
                   className="absolute top-2 right-2 z-10 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2"
                   title="清除選中區域"
                 >
                   <X size={16} />
                   清除區域
-                </button>
+                    </button>
               )}
               <DesktopPreview 
                 previewItems={previewItems} 
@@ -1156,39 +1188,39 @@ export function OrganizerApp({
                 onRegionChange={setSelectedRegion}
                 selectedItemIds={selectedItemIds}
               />
-            </div>
           </div>
+        </div>
 
           <div className="flex-1 bg-white rounded-2xl border border-gray-300 shadow overflow-visible min-w-[400px] flex flex-col">
-            <div className="bg-gray-100 border-b border-gray-200 flex">
-              <button
+          <div className="bg-gray-100 border-b border-gray-200 flex">
+            <button
                 onClick={() => setTab("tag")}
                 className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "tag" ? "bg-white border-b-2 border-white" : "text-gray-600"
-                  }`}
-              >
+              }`}
+            >
                 Tag
-              </button>
-              <button
+            </button>
+            <button
                 onClick={() => setTab("rule")}
                 className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "rule" ? "bg-white border-b-2 border-white" : "text-gray-600"
-                  }`}
-              >
+              }`}
+            >
                 Rules
-              </button>
-              <button
-                onClick={() => setTab("history")}
+            </button>
+            <button
+              onClick={() => setTab("history")}
                 className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "history" ? "bg-white border-b-2 border-white" : "text-gray-600"
-                  }`}
-              >
-                History
-              </button>
-              <button
+              }`}
+            >
+              History
+            </button>
+                <button
                 onClick={() => setTab("saved")}
                 className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "saved" ? "bg-white border-b-2 border-white" : "text-gray-600"
                   }`}
-              >
+                >
                 Saved
-              </button>
+                </button>
             </div>
 
             <div className={`flex-1 ${tab === "rule" ? "overflow-visible" : "overflow-hidden"}`}>
@@ -1204,7 +1236,7 @@ export function OrganizerApp({
                   onToggleExpand={toggleTagExpand}
                   onStartEdit={startEditingTag}
                   onSaveEdit={saveTagName}
-                  onEditChange={setEditingName}
+                            onEditChange={setEditingName}
                   onColorChange={updateTagColor}
                   onRemoveFile={removeFileFromTag}
                   onGenerateTags={handleAIGenerateTags}
@@ -1215,7 +1247,7 @@ export function OrganizerApp({
 
               {tab === "rule" && ruleList}
 
-              {tab === "history" && (
+            {tab === "history" && (
                 <HistoryPanel
                   historyItems={historyItems}
                   onToggleStar={toggleHistoryStar}
@@ -1233,83 +1265,83 @@ export function OrganizerApp({
                   onAddToApplied={addSavedToApplied}
                   onDelete={deleteSavedRule}
                 />
-              )}
-            </div>
+            )}
           </div>
         </div>
-
-        {/* API Key 輸入對話框 */}
-        {showApiKeyDialog && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-gray-900">輸入 Gemini API Key</h2>
-                <button
-                  onClick={() => {
-                    setShowApiKeyDialog(false);
-                    setApiKeyInput("");
-                    setPendingAction(null);
-                  }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              <p className="text-sm text-gray-600 mb-4">
-                要使用 AI 功能，請輸入您的 Gemini API Key。此 Key 將僅存儲在本次會話中，刷新頁面後會清除。
-              </p>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Gemini API Key
-                </label>
-                <input
-                  type="password"
-                  value={apiKeyInput}
-                  onChange={(e) => setApiKeyInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleApiKeySubmit();
-                    }
-                  }}
-                  placeholder="請輸入您的 Gemini API Key"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
-                  autoFocus
-                />
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setShowApiKeyDialog(false);
-                    setApiKeyInput("");
-                    setPendingAction(null);
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleApiKeySubmit}
-                  className="flex-1 px-4 py-2 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors"
-                >
-                  確認
-                </button>
-              </div>
-              <p className="text-xs text-gray-500 mt-4">
-                提示：您可以在{" "}
-                <a
-                  href="https://makersuite.google.com/app/apikey"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-orange-400 hover:text-orange-500 underline"
-                >
-                  Google AI Studio
-                </a>{" "}
-                獲取 API Key
-              </p>
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* API Key 輸入對話框 */}
+      {showApiKeyDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">輸入 Gemini API Key</h2>
+              <button
+                onClick={() => {
+                  setShowApiKeyDialog(false);
+                  setApiKeyInput("");
+                  setPendingAction(null);
+                }}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              要使用 AI 功能，請輸入您的 Gemini API Key。此 Key 將僅存儲在本次會話中，刷新頁面後會清除。
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Gemini API Key
+              </label>
+              <input
+                type="password"
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleApiKeySubmit();
+                  }
+                }}
+                placeholder="請輸入您的 Gemini API Key"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowApiKeyDialog(false);
+                  setApiKeyInput("");
+                  setPendingAction(null);
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleApiKeySubmit}
+                className="flex-1 px-4 py-2 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors"
+              >
+                確認
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mt-4">
+              提示：您可以在{" "}
+              <a
+                href="https://makersuite.google.com/app/apikey"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-orange-400 hover:text-orange-500 underline"
+              >
+                Google AI Studio
+              </a>{" "}
+              獲取 API Key
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
     </DndContext>
   );
 }
