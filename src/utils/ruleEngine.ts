@@ -10,6 +10,7 @@ export interface RuleExecutionResult {
 export interface RuleContext {
     items: DesktopItem[];
     tags?: TagItem[];
+    selectedRegion?: { x: number; y: number; width: number; height: number } | null;
 }
 
 export interface RuleParams {
@@ -42,29 +43,29 @@ export function executeRule(
     // Step 2: Execute action on filtered items
     // Support both flat format ("Sort by name") and hierarchical format ("Sort > Sort by name")
     if (action === "Sort by name" || action === "Sort > Sort by name") {
-        return sortItems(filteredItems, items, 'name');
+        return sortItems(filteredItems, items, 'name', context.selectedRegion);
     }
 
     if (action === "Sort by last accessed time" || action === "Sort > Sort by last accessed time") {
-        return sortItems(filteredItems, items, 'lastAccessed');
+        return sortItems(filteredItems, items, 'lastAccessed', context.selectedRegion);
     }
 
     if (action === "Sort by last modified time" || action === "Sort > Sort by last modified time") {
-        return sortItems(filteredItems, items, 'lastModified');
+        return sortItems(filteredItems, items, 'lastModified', context.selectedRegion);
     }
 
     if (action === "Sort by type" || action === "Sort > Sort by type") {
-        return sortItems(filteredItems, items, 'type');
+        return sortItems(filteredItems, items, 'type', context.selectedRegion);
     }
 
     if (action === "Sort by file size" || action === "Sort > Sort by file size") {
-        return sortItems(filteredItems, items, 'fileSize');
+        return sortItems(filteredItems, items, 'fileSize', context.selectedRegion);
     }
 
     // Handle "Put in folder" action
     if (action.startsWith('Put in "') && action.endsWith('" folder')) {
         const folderName = action.slice(8, -8);
-        return putInFolder(filteredItems, items, folderName);
+        return putInFolder(filteredItems, items, folderName, context.selectedRegion);
     }
 
     return null;
@@ -220,7 +221,8 @@ type SortField = 'name' | 'lastAccessed' | 'lastModified' | 'type' | 'fileSize';
 function sortItems(
     targetItems: DesktopItem[],
     allItems: DesktopItem[],
-    sortBy: SortField
+    sortBy: SortField,
+    region?: { x: number; y: number; width: number; height: number } | null
 ): RuleExecutionResult {
     const sortedTargetItems = [...targetItems].sort((a, b) => {
         switch (sortBy) {
@@ -278,14 +280,60 @@ function sortItems(
             .map(item => `${item.x},${item.y}`)
     );
 
-    let currentRow = 0;
-    let currentCol = 0;
+    // If region is specified, calculate starting position within region
+    let startRow = 0;
+    let startCol = 0;
+    let maxRow = iconsPerCol;
+    let maxCol = 100; // Default max columns
+    
+    if (region) {
+        // Calculate grid positions within the region
+        startCol = Math.floor((region.x - GRID_START_X) / GRID_WIDTH);
+        startRow = Math.floor((region.y - GRID_START_Y) / GRID_HEIGHT);
+        const endCol = Math.floor((region.x + region.width - GRID_START_X) / GRID_WIDTH);
+        const endRow = Math.floor((region.y + region.height - GRID_START_Y) / GRID_HEIGHT);
+        
+        // Ensure we don't go negative
+        startCol = Math.max(0, startCol);
+        startRow = Math.max(0, startRow);
+        maxCol = endCol + 1;
+        maxRow = endRow + 1;
+    }
 
-    function findNextAvailablePosition(): { row: number; col: number } {
-        while (true) {
+    let currentRow = startRow;
+    let currentCol = startCol;
+
+    function findNextAvailablePosition(): { row: number; col: number } | null {
+        let attempts = 0;
+        const maxAttempts = region ? (maxRow - startRow) * (maxCol - startCol) : 1000;
+        
+        while (attempts < maxAttempts) {
             const x = GRID_START_X + currentCol * GRID_WIDTH;
             const y = GRID_START_Y + currentRow * GRID_HEIGHT;
             const posKey = `${x},${y}`;
+
+            // If region is specified, check if position (including icon size) is completely within region bounds
+            if (region) {
+                // Check if the entire icon (100x110px) fits within the region
+                const iconRight = x + GRID_WIDTH;
+                const iconBottom = y + GRID_HEIGHT;
+                
+                if (x < region.x || iconRight > region.x + region.width ||
+                    y < region.y || iconBottom > region.y + region.height) {
+                    // Position is outside region, skip it
+                    currentRow++;
+                    if (currentRow >= maxRow) {
+                        currentRow = startRow;
+                        currentCol++;
+                        if (currentCol >= maxCol) {
+                            // No more positions in region, return null (don't fallback to entire grid)
+                            return null;
+                        }
+                    }
+                    attempts++;
+                    continue;
+                }
+            }
 
             if (!occupiedPositions.has(posKey)) {
                 return { row: currentRow, col: currentCol };
@@ -293,25 +341,60 @@ function sortItems(
 
             // Move down first (vertical-first layout like Windows)
             currentRow++;
-            if (currentRow >= iconsPerCol) {
-                currentRow = 0;
+            if (currentRow >= maxRow) {
+                currentRow = startRow;
                 currentCol++;
+                if (currentCol >= maxCol) {
+                    // If region specified, don't fallback to entire grid - return null
+                    if (region) {
+                        return null;
+                    }
+                    // No more positions available
+                    return null;
+                }
             }
+            attempts++;
         }
+        
+        // If region specified and we've exhausted all attempts, return null
+        // Don't fallback to entire grid - we want to keep files within the region
+        return null;
     }
 
     const arrangedTargetItems = sortedTargetItems.map((item) => {
-        const { row, col } = findNextAvailablePosition();
+        const position = findNextAvailablePosition();
+        if (!position) {
+            // If no position found, keep original position
+            return item;
+        }
+        
+        const { row, col } = position;
         const x = GRID_START_X + col * GRID_WIDTH;
         const y = GRID_START_Y + row * GRID_HEIGHT;
 
         occupiedPositions.add(`${x},${y}`);
 
+        // Move to next position for next item
+        currentRow = row;
+        currentCol = col;
+        
         // Move down first (vertical-first layout like Windows)
         currentRow++;
-        if (currentRow >= iconsPerCol) {
-            currentRow = 0;
-            currentCol++;
+        if (region) {
+            if (currentRow >= maxRow) {
+                currentRow = startRow;
+                currentCol++;
+                if (currentCol >= maxCol) {
+                    // Fallback to entire grid
+                    currentRow = 0;
+                    currentCol = 0;
+                }
+            }
+        } else {
+            if (currentRow >= iconsPerCol) {
+                currentRow = 0;
+                currentCol++;
+            }
         }
 
         return {
@@ -343,15 +426,46 @@ function sortItems(
 
 /**
  * Find first available grid position
+ * @param allItems - All items to check for occupied positions
+ * @param region - Optional region to limit search within (x, y, width, height)
  */
-function findFirstAvailablePosition(allItems: DesktopItem[]): { x: number; y: number } {
+function findFirstAvailablePosition(
+    allItems: DesktopItem[], 
+    region?: { x: number; y: number; width: number; height: number } | null
+): { x: number; y: number } {
     const iconsPerCol = 8;   // Maximum rows per column
     const maxColumns = 100;  // Maximum columns to search
     const occupiedPositions = new Set(
         allItems.map(item => `${item.x},${item.y}`)
     );
 
-    // Fill vertically first (column-by-column layout like Windows)
+    // If region is specified, search within the region first
+    if (region) {
+        // Calculate grid positions within the region
+        const startCol = Math.floor((region.x - GRID_START_X) / GRID_WIDTH);
+        const endCol = Math.floor((region.x + region.width - GRID_START_X) / GRID_WIDTH);
+        const startRow = Math.floor((region.y - GRID_START_Y) / GRID_HEIGHT);
+        const endRow = Math.floor((region.y + region.height - GRID_START_Y) / GRID_HEIGHT);
+
+        // Search within region bounds
+        for (let col = Math.max(0, startCol); col <= endCol; col++) {
+            for (let row = Math.max(0, startRow); row <= endRow; row++) {
+                const x = GRID_START_X + col * GRID_WIDTH;
+                const y = GRID_START_Y + row * GRID_HEIGHT;
+                
+                // Check if position is within region bounds
+                if (x >= region.x && x <= region.x + region.width &&
+                    y >= region.y && y <= region.y + region.height) {
+                    const posKey = `${x},${y}`;
+                    if (!occupiedPositions.has(posKey)) {
+                        return { x, y };
+                    }
+                }
+            }
+        }
+    }
+
+    // If no region or no position found in region, search entire grid
     for (let col = 0; col < maxColumns; col++) {
         for (let row = 0; row < iconsPerCol; row++) {
             const x = GRID_START_X + col * GRID_WIDTH;
@@ -374,10 +488,14 @@ function findFirstAvailablePosition(allItems: DesktopItem[]): { x: number; y: nu
 function putInFolder(
     targetItems: DesktopItem[],
     allItems: DesktopItem[],
-    folderName: string
+    folderName: string,
+    region?: { x: number; y: number; width: number; height: number } | null
 ): RuleExecutionResult {
     console.log(`[putInFolder] Processing folder: "${folderName}"`);
     console.log(`[putInFolder] Total items before: ${allItems.length}, Target items: ${targetItems.length}`);
+    if (region) {
+        console.log(`[putInFolder] Region: (${region.x}, ${region.y}) ${region.width}x${region.height}`);
+    }
 
     let folderItem = allItems.find(
         item => item.type === 'folder' && item.label === folderName
@@ -396,7 +514,8 @@ function putInFolder(
     if (!folderItem) {
         // When finding position for new folder, exclude target items
         // because they will be removed/moved and shouldn't block placement
-        const position = findFirstAvailablePosition(nonTargetItems);
+        // If region is specified, try to place folder within the region
+        const position = findFirstAvailablePosition(nonTargetItems, region);
         folderItem = {
             id: `folder-${Date.now()}`,
             label: folderName,

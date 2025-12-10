@@ -21,9 +21,11 @@ import { generateThumbnail } from "../utils/thumbnailUtils";
 function DraggablePreviewFile({
   item,
   scale,
+  isSelected,
 }: {
   item: { id: string; label: string; x: number; y: number; imageUrl?: string };
   scale: number;
+  isSelected?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `preview-file-${item.id}`,
@@ -41,7 +43,9 @@ function DraggablePreviewFile({
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className="absolute flex flex-col items-center gap-1 p-1 w-20 cursor-grab active:cursor-grabbing"
+      className={`absolute flex flex-col items-center gap-1 p-1 w-20 cursor-grab active:cursor-grabbing transition-all ${
+        isSelected ? 'ring-2 ring-blue-500 ring-offset-1 bg-blue-500/20 rounded' : ''
+      }`}
       style={{
         left: item.x * scale,
         top: item.y * scale,
@@ -77,10 +81,26 @@ function DraggablePreviewFile({
   );
 }
 
-function DesktopPreview({ previewItems, isPreviewMode }: { previewItems: DesktopItem[]; isPreviewMode?: boolean }) {
+function DesktopPreview({ 
+  previewItems, 
+  isPreviewMode,
+  selectedRegion,
+  onRegionChange,
+  selectedItemIds,
+}: { 
+  previewItems: DesktopItem[]; 
+  isPreviewMode?: boolean;
+  selectedRegion?: { x: number; y: number; width: number; height: number } | null;
+  onRegionChange?: (region: { x: number; y: number; width: number; height: number } | null) => void;
+  selectedItemIds?: Set<string>;
+}) {
   const { background } = useDesktop();
   const containerRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionStart, setSelectionStart] = useState<{ x: number; y: number } | null>(null);
+  const [currentSelection, setCurrentSelection] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -125,9 +145,53 @@ function DesktopPreview({ previewItems, isPreviewMode }: { previewItems: Desktop
     };
   }, [containerSize]);
 
+  // 將屏幕座標轉換為預覽座標（相對於 1920x1080）
+  const screenToPreview = (screenX: number, screenY: number) => {
+    if (!previewRef.current) return { x: 0, y: 0 };
+    const rect = previewRef.current.getBoundingClientRect();
+    const x = (screenX - rect.left) / scale;
+    const y = (screenY - rect.top) / scale;
+    return { x: Math.max(0, Math.min(1920, x)), y: Math.max(0, Math.min(1080 - 48, y)) };
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!onRegionChange || e.button !== 0) return; // 只處理左鍵
+    const previewPos = screenToPreview(e.clientX, e.clientY);
+    setIsSelecting(true);
+    setSelectionStart(previewPos);
+    setCurrentSelection({ x: previewPos.x, y: previewPos.y, width: 0, height: 0 });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isSelecting || !selectionStart) return;
+    const previewPos = screenToPreview(e.clientX, e.clientY);
+    const x = Math.min(selectionStart.x, previewPos.x);
+    const y = Math.min(selectionStart.y, previewPos.y);
+    const width = Math.abs(previewPos.x - selectionStart.x);
+    const height = Math.abs(previewPos.y - selectionStart.y);
+    setCurrentSelection({ x, y, width, height });
+  };
+
+  const handleMouseUp = () => {
+    if (!isSelecting || !currentSelection) return;
+    // 只有當選擇區域足夠大時才保存
+    if (currentSelection.width > 10 && currentSelection.height > 10) {
+      onRegionChange?.(currentSelection);
+    } else {
+      onRegionChange?.(null);
+    }
+    setIsSelecting(false);
+    setSelectionStart(null);
+    setCurrentSelection(null);
+  };
+
+  // 顯示的區域（優先顯示當前選擇，否則顯示已保存的區域）
+  const displayRegion = currentSelection || selectedRegion;
+
   return (
     <div ref={containerRef} className="w-full h-full relative border border-gray-500 rounded-xl overflow-hidden shadow-inner flex items-center justify-center">
       <div
+        ref={previewRef}
         className="relative rounded-lg overflow-hidden shadow-lg ring-1 ring-white/10"
         style={{
           width: previewWidth,
@@ -137,13 +201,38 @@ function DesktopPreview({ previewItems, isPreviewMode }: { previewItems: Desktop
           backgroundPosition: "top center",
           backgroundRepeat: "no-repeat",
         }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
       >
         {previewItems.map((item) => (
-          <DraggablePreviewFile key={item.id} item={item} scale={scale} />
+          <DraggablePreviewFile 
+            key={item.id} 
+            item={item} 
+            scale={scale} 
+            isSelected={selectedItemIds?.has(item.id)}
+          />
         ))}
+        {displayRegion && (
+          <div
+            className="absolute border-2 border-blue-500 bg-blue-500/20 pointer-events-none"
+            style={{
+              left: displayRegion.x * scale,
+              top: displayRegion.y * scale,
+              width: displayRegion.width * scale,
+              height: displayRegion.height * scale,
+            }}
+          />
+        )}
         {isPreviewMode && (
           <div className="absolute bottom-4 right-4 bg-blue-500 text-white px-3 py-1.5 rounded-lg shadow-lg text-sm font-medium">
             Preview Mode
+          </div>
+        )}
+        {selectedRegion && (
+          <div className="absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
+            已選擇區域
           </div>
         )}
       </div>
@@ -252,6 +341,7 @@ export function OrganizerApp({
   // Preview state
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [previewItems, setPreviewItems] = useState<DesktopItem[]>(items);
+  const [selectedRegion, setSelectedRegion] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
 
   // Update preview items when desktop items change
   useEffect(() => {
@@ -462,6 +552,34 @@ export function OrganizerApp({
   };
 
   // Handle Preview
+  // 過濾區域內的檔案（需要完全包覆，x 軸和 y 軸都需要完全包覆）
+  const filterItemsByRegion = (itemsToFilter: DesktopItem[], region: { x: number; y: number; width: number; height: number } | null): DesktopItem[] => {
+    if (!region) return itemsToFilter;
+    
+    // 圖標大小：GRID_WIDTH x GRID_HEIGHT = 100x110px
+    const iconWidth = 100;
+    const iconHeight = 110;
+    
+    return itemsToFilter.filter(item => {
+      const itemX = item.x;
+      const itemY = item.y;
+      const itemRight = itemX + iconWidth;
+      const itemBottom = itemY + iconHeight;
+      
+      // 檢查檔案的整個圖標是否完全在區域內（x 軸和 y 軸都需要完全包覆）
+      return itemX >= region.x && 
+             itemRight <= region.x + region.width &&
+             itemY >= region.y && 
+             itemBottom <= region.y + region.height;
+    });
+  };
+
+  // 計算哪些檔案被框選到（用於高亮顯示）
+  const selectedItemIds = useMemo(() => {
+    if (!selectedRegion) return new Set<string>();
+    return new Set(filterItemsByRegion(items, selectedRegion).map(item => item.id));
+  }, [selectedRegion, items]);
+
   const handlePreview = () => {
     // If already in preview mode, toggle off
     if (isPreviewMode) {
@@ -482,13 +600,24 @@ export function OrganizerApp({
     for (const rule of rules) {
       const parsed = parseRuleText(rule.text);
       if (parsed) {
+        // 如果有限定區域，只對區域內的檔案執行規則
         const context: RuleContext = {
-          items: resultItems,
+          items: selectedRegion ? filterItemsByRegion(resultItems, selectedRegion) : resultItems,
           tags: tags,
+          selectedRegion: selectedRegion,
         };
         const result = executeRule(parsed.subject, parsed.action, context);
         if (result) {
-          resultItems = result.items;
+          // 合併結果：保留區域外的檔案，更新區域內的檔案
+          if (selectedRegion) {
+            const regionItems = filterItemsByRegion(resultItems, selectedRegion);
+            const nonRegionItems = resultItems.filter(item => 
+              !regionItems.some(ri => ri.id === item.id)
+            );
+            resultItems = [...nonRegionItems, ...result.items];
+          } else {
+            resultItems = result.items;
+          }
           success = true;
         }
       }
@@ -519,13 +648,24 @@ export function OrganizerApp({
       for (const rule of rules) {
         const parsed = parseRuleText(rule.text);
         if (parsed) {
+          // 如果有限定區域，只對區域內的檔案執行規則
           const context: RuleContext = {
-            items: resultItems,
+            items: selectedRegion ? filterItemsByRegion(resultItems, selectedRegion) : resultItems,
             tags: tags,
+            selectedRegion: selectedRegion,
           };
           const result = executeRule(parsed.subject, parsed.action, context);
           if (result) {
-            resultItems = result.items;
+            // 合併結果：保留區域外的檔案，更新區域內的檔案
+            if (selectedRegion) {
+              const regionItems = filterItemsByRegion(resultItems, selectedRegion);
+              const nonRegionItems = resultItems.filter(item => 
+                !regionItems.some(ri => ri.id === item.id)
+              );
+              resultItems = [...nonRegionItems, ...result.items];
+            } else {
+              resultItems = result.items;
+            }
             descriptions.push(result.description);
           }
         }
@@ -998,8 +1138,24 @@ export function OrganizerApp({
       <div className="h-full flex flex-col bg-[#d8d8d8] p-4 gap-4 text-gray-900">
         <div className="flex flex-1 gap-4 min-h-0">
           <div className="flex-4 flex flex-col min-w-[520px]">
-            <div className="h-full rounded-2xl overflow-hidden shadow-inner border border-gray-500 bg-linear-to-b from-gray-800 to-gray-700">
-              <DesktopPreview previewItems={previewItems} isPreviewMode={isPreviewMode} />
+            <div className="h-full rounded-2xl overflow-hidden shadow-inner border border-gray-500 bg-linear-to-b from-gray-800 to-gray-700 relative">
+              {selectedRegion && (
+                <button
+                  onClick={() => setSelectedRegion(null)}
+                  className="absolute top-2 right-2 z-10 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2"
+                  title="清除選中區域"
+                >
+                  <X size={16} />
+                  清除區域
+                </button>
+              )}
+              <DesktopPreview 
+                previewItems={previewItems} 
+                isPreviewMode={isPreviewMode}
+                selectedRegion={selectedRegion}
+                onRegionChange={setSelectedRegion}
+                selectedItemIds={selectedItemIds}
+              />
             </div>
           </div>
 
