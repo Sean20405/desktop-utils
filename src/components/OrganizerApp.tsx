@@ -317,6 +317,19 @@ export function OrganizerApp({
     }
     return [];
   });
+
+  // Load Zip names from localStorage (separate from folders)
+  const [zipNames, setZipNames] = useState<string[]>(() => {
+    const saved = localStorage.getItem('organizerZipNames');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse saved Zip names:', e);
+      }
+    }
+    return [];
+  });
   // History is now managed from parent (App.tsx), no need for local state
   // Load tags from localStorage or start with empty array
   // const [tags, setTags] = useState<{ id: string; name: string; color: string; items: string[]; expanded: boolean }[]>(() => {
@@ -402,6 +415,11 @@ export function OrganizerApp({
     localStorage.setItem('organizerTimeConditions', JSON.stringify(timeConditions));
   }, [timeConditions]);
 
+  // Save Zip names to localStorage
+  useEffect(() => {
+    localStorage.setItem('organizerZipNames', JSON.stringify(zipNames));
+  }, [zipNames]);
+
   const handleRollback = (id: string) => {
     const entry = historyItems.find((item) => item.id === id);
     if (entry && entry.items) {
@@ -456,6 +474,30 @@ export function OrganizerApp({
         // Use selected folder from the list
         finalAction = `Put in \"${folderPart}\" folder`;
       }
+    } else if (actionSelection.startsWith('Zip > ')) {
+      const folderPart = actionSelection.replace('Zip > ', '');
+
+      // Handle input from Zip folder selection
+      if (folderPart === 'New folder...') {
+        const newFolderName = window.prompt('請輸入新 Zip 檔案名稱:');
+        if (!newFolderName || !newFolderName.trim()) {
+          return; // User cancelled or entered empty name
+        }
+        const trimmedName = newFolderName.trim();
+
+        // Add to folders list if not already exists (shared with Put in folder)
+        if (!folders.includes(trimmedName)) {
+          setFolders((prev) => [...prev, trimmedName]);
+        }
+
+        finalAction = `Zip in \"${trimmedName}\" folder`;
+      } else {
+        // Use selected folder name from the list
+        finalAction = `Zip in \"${folderPart}\" folder`;
+      }
+    } else if (actionSelection === "Delete") {
+      // Delete action doesn't need modification
+      finalAction = "Delete";
     }
 
     const text = `${finalSubject} + ${finalAction}`;
@@ -620,6 +662,19 @@ export function OrganizerApp({
 
   const handleDeleteTimeCondition = (condition: string) => {
     setTimeConditions((prev) => prev.filter(c => c !== condition));
+  };
+
+  const handleAddZipName = (zipName: string) => {
+    if (!zipName.trim()) return;
+    const trimmedName = zipName.trim();
+    if (zipNames.includes(trimmedName)) {
+      return; // Silently ignore duplicates
+    }
+    setZipNames((prev) => [...prev, trimmedName]);
+  };
+
+  const handleDeleteZipName = (zipName: string) => {
+    setZipNames((prev) => prev.filter(z => z !== zipName));
   };
 
   // Handle Preview
@@ -1163,10 +1218,10 @@ export function OrganizerApp({
     return getSubjectOptionsWithTags(tags, items, fstringPatterns, timeConditions);
   }, [tags, items, fstringPatterns, timeConditions]);
 
-  // Generate dynamic action options based on user folders
+  // Generate dynamic action options based on folders and zip names
   const dynamicActionOptions = useMemo(() => {
-    return getActionOptionsWithFolders(folders);
-  }, [folders]);
+    return getActionOptionsWithFolders(folders, zipNames);
+  }, [folders, zipNames]);
 
   // Use RulesPanel component instead of inline JSX
   const ruleList = (
@@ -1188,6 +1243,8 @@ export function OrganizerApp({
       onDeleteFstringPattern={handleDeleteFstringPattern}
       onAddTimeCondition={handleAddTimeCondition}
       onDeleteTimeCondition={handleDeleteTimeCondition}
+      onAddZipName={handleAddZipName}
+      onDeleteZipName={handleDeleteZipName}
       onAddRule={handleAddRule}
       onSaveRule={handleSaveRule}
       onEditRule={handleEditRule}

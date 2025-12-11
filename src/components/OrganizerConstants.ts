@@ -64,16 +64,23 @@ export const actionOptions: HierarchyNode[] = [
 ];
 
 /**
- * Generate dynamic action options based on user-created folders
+ * Generate dynamic action options based on user-created folders and zip names
  */
-export function getActionOptionsWithFolders(folders: string[]): HierarchyNode[] {
+export function getActionOptionsWithFolders(folders: string[], zipNames: string[] = []): HierarchyNode[] {
     // Create children for "Put in folder": existing folders + input field
     const putInFolderChildren: HierarchyNode[] = [
         ...folders.map(folder => ({ label: folder })),
         { label: '__INPUT__' }, // Special marker for input field rendering
     ];
 
+    // Zip uses its own separate list
+    const zipChildren: HierarchyNode[] = [
+        ...zipNames.map(zipName => ({ label: zipName })),
+        { label: '__INPUT__' },
+    ];
+
     return [
+        { label: "Delete" }, // Moved to top
         {
             label: "Sort",
             children: [
@@ -88,8 +95,10 @@ export function getActionOptionsWithFolders(folders: string[]): HierarchyNode[] 
             label: "Put in folder",
             children: putInFolderChildren,
         },
-        { label: "Delete" },
-        { label: "zip" },
+        {
+            label: "Zip", // Changed from "zip" to "Zip"
+            children: zipChildren,
+        },
     ];
 }
 

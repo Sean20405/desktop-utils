@@ -68,6 +68,17 @@ export function executeRule(
         return putInFolder(filteredItems, items, folderName, context.selectedRegion);
     }
 
+    // Handle "Delete" action
+    if (action === "Delete") {
+        return deleteItems(filteredItems);
+    }
+
+    // Handle "Zip" action - similar to Put in folder
+    if (action.startsWith('Zip in "') && action.endsWith('" folder')) {
+        const folderName = action.slice(8, -8);
+        return zipItems(filteredItems, items, folderName, context.selectedRegion);
+    }
+
     return null;
 }
 
@@ -550,6 +561,82 @@ function findFirstAvailablePosition(
 
     // Fallback to far right of grid
     return { x: GRID_START_X + maxColumns * GRID_WIDTH, y: GRID_START_Y };
+}
+
+/**
+ * Delete selected items
+ */
+function deleteItems(targetItems: DesktopItem[]): RuleExecutionResult {
+    console.log(`[deleteItems] Deleting ${targetItems.length} items`);
+
+    return {
+        items: [], // Return empty array - all target items are deleted
+        description: `Deleted ${targetItems.length} file(s)`,
+    };
+}
+
+/**
+ * Zip files into a folder (similar to putInFolder but with .zip extension and locked icon)
+ */
+function zipItems(
+    targetItems: DesktopItem[],
+    allItems: DesktopItem[],
+    folderName: string,
+    region?: { x: number; y: number; width: number; height: number } | null
+): RuleExecutionResult {
+    console.log(`[zipItems] Processing zip: "${folderName}.zip"`);
+    console.log(`[zipItems] Total items before: ${allItems.length}, Target items: ${targetItems.length}`);
+    if (region) {
+        console.log(`[zipItems] Region: (${region.x}, ${region.y}) ${region.width}x${region.height}`);
+    }
+
+    const zipFileName = `${folderName}.zip`;
+    let zipItem = allItems.find(
+        item => item.type === 'folder' && item.label === zipFileName
+    );
+
+    console.log(`[zipItems] Zip "${zipFileName}" exists:`, !!zipItem);
+
+    // Calculate non-target items first (items that will remain after this operation)
+    const nonTargetItems = allItems.filter(
+        item => !targetItems.some(target => target.id === item.id)
+    );
+
+    console.log(`[zipItems] Non-target items: ${nonTargetItems.length}`);
+
+    if (!zipItem) {
+        // When finding position for new zip, exclude target items
+        const position = findFirstAvailablePosition(nonTargetItems, region);
+        zipItem = {
+            id: `zip-${Date.now()}`,
+            label: zipFileName,
+            type: 'folder',
+            x: position.x,
+            y: position.y,
+            imageUrl: '/folder-locked.png', // Locked folder icon
+            lastAccessed: new Date().toISOString(),
+            lastModified: new Date().toISOString(),
+            createdTime: new Date().toISOString(),
+            fileSize: targetItems.reduce((sum, item) => sum + (item.fileSize || 0), 0),
+        };
+        console.log(`[zipItems] Created new zip at (${position.x}, ${position.y})`);
+    }
+
+    // Build result: keep all non-target items and ensure the zip is included
+    const resultItems = [...nonTargetItems];
+
+    // Always ensure the zip is in the result
+    const zipAlreadyIncluded = nonTargetItems.some(item => item.id === zipItem!.id);
+    if (!zipAlreadyIncluded) {
+        resultItems.push(zipItem!);
+    }
+
+    console.log(`[zipItems] Result: ${resultItems.length} items total`);
+
+    return {
+        items: resultItems,
+        description: `Zipped ${targetItems.length} file(s) into "${zipFileName}"`,
+    };
 }
 
 /**

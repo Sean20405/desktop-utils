@@ -19,6 +19,8 @@ function HierarchyList({
     onDeleteFstringPattern,
     onAddTimeCondition,
     onDeleteTimeCondition,
+    onAddZipName,
+    onDeleteZipName,
     level = 0,
 }: {
     nodes: HierarchyNode[];
@@ -32,6 +34,8 @@ function HierarchyList({
     onDeleteFstringPattern?: (pattern: string) => void;
     onAddTimeCondition?: (condition: string) => void;
     onDeleteTimeCondition?: (condition: string) => void;
+    onAddZipName?: (zipName: string) => void;
+    onDeleteZipName?: (zipName: string) => void;
     level?: number;
 }) {
     const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
@@ -80,10 +84,17 @@ function HierarchyList({
     };
 
     const handleAddNewFolder = () => {
-        if (newFolderName.trim() && onAddFolder) {
-            onAddFolder(newFolderName.trim());
-            setNewFolderName("");
-        }
+        if (!newFolderName.trim()) return;
+        onAddFolder?.(newFolderName.trim());
+        onSelect(`Put in folder > ${newFolderName.trim()}`);
+        setNewFolderName("");
+    };
+
+    const handleAddNewZip = () => {
+        if (!newFolderName.trim()) return;
+        onAddZipName?.(newFolderName.trim());
+        onSelect(`Zip > ${newFolderName.trim()}`);
+        setNewFolderName("");
     };
 
     return (
@@ -103,6 +114,7 @@ function HierarchyList({
                 if (isInputNode) {
                     // Determine input type based on path
                     const isFolderInput = path === "Put in folder";
+                    const isZipInput = path === "Zip";
                     const isFStringInput = path === "F-string";
                     const isTimeInput = path?.startsWith("Time >");
 
@@ -126,6 +138,34 @@ function HierarchyList({
                                     />
                                     <button
                                         onClick={handleAddNewFolder}
+                                        className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 active:scale-95 transition-all"
+                                        type="button"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    } else if (isZipInput) {
+                        // Zip file name input (same as folder input but different label)
+                        return (
+                            <div key={nodeKey} className="pt-2 border-t border-gray-200" style={{ paddingLeft: level ? 6 : 0 }}>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="新 Zip 檔案名稱..."
+                                        value={newFolderName}
+                                        onChange={(e) => setNewFolderName(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                handleAddNewZip();
+                                            }
+                                        }}
+                                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <button
+                                        onClick={handleAddNewZip}
                                         className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 active:scale-95 transition-all"
                                         type="button"
                                     >
@@ -332,6 +372,18 @@ function HierarchyList({
                                             <X size={14} />
                                         </button>
                                     )}
+                                    {path === "Zip" && onDeleteZipName && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onDeleteZipName(node.label);
+                                            }}
+                                            className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                                            title="刪除 Zip"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    )}
                                     {path === "F-string" && onDeleteFstringPattern && (
                                         <button
                                             onClick={(e) => {
@@ -376,6 +428,8 @@ function HierarchyList({
                                     onDeleteFstringPattern={onDeleteFstringPattern}
                                     onAddTimeCondition={onAddTimeCondition}
                                     onDeleteTimeCondition={onDeleteTimeCondition}
+                                    onAddZipName={onAddZipName}
+                                    onDeleteZipName={onDeleteZipName}
                                     level={level + 1}
                                 />
                             </div>
@@ -402,6 +456,8 @@ function HierarchicalDropdown({
     onDeleteFstringPattern,
     onAddTimeCondition,
     onDeleteTimeCondition,
+    onAddZipName,
+    onDeleteZipName,
     onOpenChange,
     isOpen,
     align = "left",
@@ -419,6 +475,8 @@ function HierarchicalDropdown({
     onDeleteFstringPattern?: (pattern: string) => void;
     onAddTimeCondition?: (condition: string) => void;
     onDeleteTimeCondition?: (condition: string) => void;
+    onAddZipName?: (zipName: string) => void;
+    onDeleteZipName?: (zipName: string) => void;
     onOpenChange?: (isOpen: boolean) => void;
     isOpen?: boolean;
     align?: "left" | "right";
@@ -478,6 +536,8 @@ function HierarchicalDropdown({
                             onDeleteFstringPattern={onDeleteFstringPattern}
                             onAddTimeCondition={onAddTimeCondition}
                             onDeleteTimeCondition={onDeleteTimeCondition}
+                            onAddZipName={onAddZipName}
+                            onDeleteZipName={onDeleteZipName}
                         />
                     </div>
                 </div>
@@ -573,6 +633,8 @@ type RulesPanelProps = {
     onDeleteFstringPattern?: (pattern: string) => void;
     onAddTimeCondition?: (condition: string) => void;
     onDeleteTimeCondition?: (condition: string) => void;
+    onAddZipName?: (zipName: string) => void;
+    onDeleteZipName?: (zipName: string) => void;
     onAddRule: () => void;
     onSaveRule: () => void;
     onEditRule: (id: string) => void;
@@ -602,6 +664,8 @@ export function RulesPanel({
     onDeleteFstringPattern,
     onAddTimeCondition,
     onDeleteTimeCondition,
+    onAddZipName,
+    onDeleteZipName,
     onAddRule,
     onSaveRule,
     onEditRule,
@@ -655,6 +719,8 @@ export function RulesPanel({
                         onRename={onRenameFolder}
                         onAddFolder={onAddFolder}
                         onDeleteFolder={onDeleteFolder}
+                        onAddZipName={onAddZipName}
+                        onDeleteZipName={onDeleteZipName}
                         onOpenChange={handleActionOpenChange}
                         isOpen={openDropdown === 'action'}
                         align="right"
