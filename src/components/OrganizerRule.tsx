@@ -363,7 +363,7 @@ function HierarchyList({
                             )}
                         </div>
                         {hasChildren && isExpanded && (
-                            <div className="ml-5 pl-3 border-l border-dashed border-gray-200 animate-in slide-in-from-top-1 duration-200">
+                            <div className="ml-3 pl-3 border-l border-dashed border-gray-200 animate-in slide-in-from-top-1 duration-200">
                                 <HierarchyList
                                     nodes={node.children!}
                                     path={currentValue}
@@ -402,6 +402,8 @@ function HierarchicalDropdown({
     onDeleteFstringPattern,
     onAddTimeCondition,
     onDeleteTimeCondition,
+    onOpenChange,
+    isOpen,
     align = "left",
 }: {
     title: string;
@@ -417,10 +419,19 @@ function HierarchicalDropdown({
     onDeleteFstringPattern?: (pattern: string) => void;
     onAddTimeCondition?: (condition: string) => void;
     onDeleteTimeCondition?: (condition: string) => void;
+    onOpenChange?: (isOpen: boolean) => void;
+    isOpen?: boolean;
     align?: "left" | "right";
 }) {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement | null>(null);
+
+    // Sync internal state with external isOpen prop
+    useEffect(() => {
+        if (isOpen !== undefined && isOpen !== open) {
+            setOpen(isOpen);
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -435,7 +446,11 @@ function HierarchicalDropdown({
     return (
         <div className="relative w-full" ref={containerRef}>
             <button
-                onClick={() => setOpen((prev) => !prev)}
+                onClick={() => {
+                    const newState = !open;
+                    setOpen(newState);
+                    onOpenChange?.(newState);
+                }}
                 className="w-full flex items-center justify-between border border-gray-300 rounded-full px-4 py-2 bg-white hover:bg-gray-50 shadow-inner"
             >
                 <span className={`text-sm ${selected ? "text-gray-900" : "text-gray-500"}`}>{selected || placeholder}</span>
@@ -444,7 +459,7 @@ function HierarchicalDropdown({
 
             {open && (
                 <div
-                    className={`absolute z-20 mt-2 min-w-full w-[420px] max-w-[720px] max-h-96 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-2xl ${align === "right" ? "right-0 left-auto" : "left-0 right-auto"
+                    className={`absolute z-20 mt-2 min-w-full w-[360px] max-w-[720px] max-h-96 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-2xl ${align === "right" ? "right-0 left-auto" : "left-0 right-auto"
                         }`}
                 >
                     <div className="px-3 py-2 text-sm font-semibold text-gray-900 border-b border-gray-200 bg-white">{title}</div>
@@ -597,6 +612,17 @@ export function RulesPanel({
     onApply,
     isApplying = false,
 }: RulesPanelProps) {
+    // State to track which dropdown is open (mutual exclusion)
+    const [openDropdown, setOpenDropdown] = useState<'subject' | 'action' | null>(null);
+
+    const handleSubjectOpenChange = (isOpen: boolean) => {
+        setOpenDropdown(isOpen ? 'subject' : null);
+    };
+
+    const handleActionOpenChange = (isOpen: boolean) => {
+        setOpenDropdown(isOpen ? 'action' : null);
+    };
+
     return (
         <div className="flex flex-col h-full">
             <div className="px-4 py-3 border-b border-gray-200 bg-white flex items-center justify-between">
@@ -616,6 +642,8 @@ export function RulesPanel({
                         onDeleteFstringPattern={onDeleteFstringPattern}
                         onAddTimeCondition={onAddTimeCondition}
                         onDeleteTimeCondition={onDeleteTimeCondition}
+                        onOpenChange={handleSubjectOpenChange}
+                        isOpen={openDropdown === 'subject'}
                         align="left"
                     />
                     <HierarchicalDropdown
@@ -627,6 +655,8 @@ export function RulesPanel({
                         onRename={onRenameFolder}
                         onAddFolder={onAddFolder}
                         onDeleteFolder={onDeleteFolder}
+                        onOpenChange={handleActionOpenChange}
+                        isOpen={openDropdown === 'action'}
                         align="right"
                     />
                     <button
