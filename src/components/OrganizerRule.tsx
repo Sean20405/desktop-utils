@@ -15,6 +15,12 @@ function HierarchyList({
     isEditableFolder,
     onAddFolder,
     onDeleteFolder,
+    onAddFstringPattern,
+    onDeleteFstringPattern,
+    onAddTimeCondition,
+    onDeleteTimeCondition,
+    onAddZipName,
+    onDeleteZipName,
     level = 0,
 }: {
     nodes: HierarchyNode[];
@@ -24,12 +30,26 @@ function HierarchyList({
     isEditableFolder?: (path: string, label: string) => boolean;
     onAddFolder?: (folderName: string) => void;
     onDeleteFolder?: (folderName: string) => void;
+    onAddFstringPattern?: (pattern: string) => void;
+    onDeleteFstringPattern?: (pattern: string) => void;
+    onAddTimeCondition?: (condition: string) => void;
+    onDeleteTimeCondition?: (condition: string) => void;
+    onAddZipName?: (zipName: string) => void;
+    onDeleteZipName?: (zipName: string) => void;
     level?: number;
 }) {
     const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
     const [editingNode, setEditingNode] = useState<string | null>(null);
     const [editingValue, setEditingValue] = useState<string>("");
     const [newFolderName, setNewFolderName] = useState<string>("");
+
+    // State for F-string input
+    const [fstringPattern, setFstringPattern] = useState<string>("");
+
+    // State for Time input (4 modes: within/over/before/after)
+    const [timeMode, setTimeMode] = useState<'within' | 'over' | 'before' | 'after'>('within');
+    const [timeDuration, setTimeDuration] = useState<string>("1 week");
+    const [timeDate, setTimeDate] = useState<string>("");
 
     const toggleExpand = (nodeKey: string) => {
         setExpandedNodes(prev => {
@@ -64,10 +84,17 @@ function HierarchyList({
     };
 
     const handleAddNewFolder = () => {
-        if (newFolderName.trim() && onAddFolder) {
-            onAddFolder(newFolderName.trim());
-            setNewFolderName("");
-        }
+        if (!newFolderName.trim()) return;
+        onAddFolder?.(newFolderName.trim());
+        onSelect(`Put in folder > ${newFolderName.trim()}`);
+        setNewFolderName("");
+    };
+
+    const handleAddNewZip = () => {
+        if (!newFolderName.trim()) return;
+        onAddZipName?.(newFolderName.trim());
+        onSelect(`Zip > ${newFolderName.trim()}`);
+        setNewFolderName("");
     };
 
     return (
@@ -85,32 +112,195 @@ function HierarchyList({
 
                 // Skip rendering the special __INPUT__ marker as a regular item
                 if (isInputNode) {
-                    return (
-                        <div key={nodeKey} className="pt-2 border-t border-gray-200" style={{ paddingLeft: level ? 6 : 0 }}>
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="text"
-                                    placeholder="新資料夾名稱..."
-                                    value={newFolderName}
-                                    onChange={(e) => setNewFolderName(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            handleAddNewFolder();
-                                        }
-                                    }}
-                                    className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    onClick={(e) => e.stopPropagation()}
-                                />
-                                <button
-                                    onClick={handleAddNewFolder}
-                                    className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 active:scale-95 transition-all"
-                                    type="button"
-                                >
-                                    +
-                                </button>
+                    // Determine input type based on path
+                    const isFolderInput = path === "Put in folder";
+                    const isZipInput = path === "Zip";
+                    const isFStringInput = path === "F-string";
+                    const isTimeInput = path?.startsWith("Time >");
+
+                    if (isFolderInput) {
+                        // Folder name input (existing functionality)
+                        return (
+                            <div key={nodeKey} className="pt-2 border-t border-gray-200" style={{ paddingLeft: level ? 6 : 0 }}>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="新資料夾名稱..."
+                                        value={newFolderName}
+                                        onChange={(e) => setNewFolderName(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                handleAddNewFolder();
+                                            }
+                                        }}
+                                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <button
+                                        onClick={handleAddNewFolder}
+                                        className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 active:scale-95 transition-all"
+                                        type="button"
+                                    >
+                                        +
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    );
+                        );
+                    } else if (isZipInput) {
+                        // Zip file name input (same as folder input but different label)
+                        return (
+                            <div key={nodeKey} className="pt-2 border-t border-gray-200" style={{ paddingLeft: level ? 6 : 0 }}>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="新 Zip 檔案名稱..."
+                                        value={newFolderName}
+                                        onChange={(e) => setNewFolderName(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                handleAddNewZip();
+                                            }
+                                        }}
+                                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <button
+                                        onClick={handleAddNewZip}
+                                        className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 active:scale-95 transition-all"
+                                        type="button"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    } else if (isFStringInput) {
+                        // F-string pattern input with separator line and add button
+                        return (
+                            <div key={nodeKey} className="pt-2 border-t border-gray-200" style={{ paddingLeft: level ? 6 : 0 }}>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="e.g., *.txt"
+                                        value={fstringPattern}
+                                        onChange={(e) => setFstringPattern(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && fstringPattern.trim()) {
+                                                const trimmed = fstringPattern.trim();
+                                                onSelect(`F-string: ${trimmed}`);
+                                                onAddFstringPattern?.(trimmed);
+                                                setFstringPattern("");
+                                            }
+                                        }}
+                                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            if (fstringPattern.trim()) {
+                                                const trimmed = fstringPattern.trim();
+                                                onSelect(`F-string: ${trimmed}`);
+                                                onAddFstringPattern?.(trimmed);
+                                                setFstringPattern("");
+                                            }
+                                        }}
+                                        className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 active:scale-95 transition-all"
+                                        type="button"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    } else if (isTimeInput) {
+                        // Time input with 4 modes: within/over (duration) and before/after (date)
+                        // Extract time type from path (e.g., "Time > Last Accessed" -> "Last Accessed")
+                        const timeType = path?.replace("Time > ", "") || "";
+                        const isDurationMode = timeMode === 'within' || timeMode === 'over';
+
+                        return (
+                            <div key={nodeKey} className="pt-2 border-t border-gray-200" style={{ paddingLeft: level ? 6 : 0 }}>
+                                <div className="flex items-center gap-2">
+                                    {/* Mode selector */}
+                                    <select
+                                        value={timeMode}
+                                        onChange={(e) => setTimeMode(e.target.value as 'within' | 'over' | 'before' | 'after')}
+                                        className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <option value="within">within</option>
+                                        <option value="over">over</option>
+                                        <option value="before">before</option>
+                                        <option value="after">after</option>
+                                    </select>
+
+                                    {/* Duration selector or date picker based on mode */}
+                                    {isDurationMode ? (
+                                        <select
+                                            value={timeDuration}
+                                            onChange={(e) => setTimeDuration(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    const condition = `${timeType} ${timeMode} ${timeDuration}`;
+                                                    onSelect(`Time > ${timeType} ${timeMode} ${timeDuration}`);
+                                                    onAddTimeCondition?.(condition);
+                                                }
+                                            }}
+                                            className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <option value="1 day">1 day</option>
+                                            <option value="1 week">1 week</option>
+                                            <option value="1 month">1 month</option>
+                                            <option value="3 months">3 months</option>
+                                            <option value="6 months">6 months</option>
+                                            <option value="1 year">1 year</option>
+                                        </select>
+                                    ) : (
+                                        <input
+                                            type="date"
+                                            value={timeDate}
+                                            onChange={(e) => setTimeDate(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && timeDate) {
+                                                    const condition = `${timeType} ${timeMode} ${timeDate}`;
+                                                    onSelect(`Time > ${timeType} ${timeMode} ${timeDate}`);
+                                                    onAddTimeCondition?.(condition);
+                                                    setTimeDate("");
+                                                }
+                                            }}
+                                            className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                    )}
+
+                                    {/* Add button */}
+                                    <button
+                                        onClick={() => {
+                                            let condition: string;
+                                            if (isDurationMode) {
+                                                condition = `${timeType} ${timeMode} ${timeDuration}`;
+                                                onSelect(`Time > ${timeType} ${timeMode} ${timeDuration}`);
+                                                onAddTimeCondition?.(condition);
+                                            } else if (timeDate) {
+                                                condition = `${timeType} ${timeMode} ${timeDate}`;
+                                                onSelect(`Time > ${timeType} ${timeMode} ${timeDate}`);
+                                                onAddTimeCondition?.(condition);
+                                                setTimeDate("");
+                                            }
+                                        }}
+                                        className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 active:scale-95 transition-all"
+                                        type="button"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    }
+
+                    // Default: no special input
+                    return null;
                 }
 
                 return (
@@ -163,7 +353,20 @@ function HierarchyList({
                                             if (canEdit) {
                                                 startEditing(nodeKey, node.label, e);
                                             } else {
-                                                onSelect(currentValue);
+                                                // Fix selection format for F-string and Time filters
+                                                let selectionValue = currentValue;
+
+                                                // Fix F-string format: "F-string > pattern" -> "F-string: pattern"
+                                                if (path === "F-string") {
+                                                    selectionValue = `F-string: ${node.label}`;
+                                                }
+                                                // Fix Time format: "Time > Field > condition" -> "Time > Field condition"
+                                                else if (path?.startsWith("Time > ")) {
+                                                    const timeField = path.replace("Time > ", "");
+                                                    selectionValue = `Time > ${timeField} ${node.label}`;
+                                                }
+
+                                                onSelect(selectionValue);
                                             }
                                         }}
                                         className={`text-sm ${level === 0 ? "text-gray-900 font-semibold" : "text-gray-800"} leading-6 whitespace-normal break-words ${canEdit ? 'cursor-text hover:text-blue-600' : 'cursor-pointer'} flex-1`}
@@ -182,11 +385,50 @@ function HierarchyList({
                                             <X size={14} />
                                         </button>
                                     )}
+                                    {path === "Zip" && onDeleteZipName && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onDeleteZipName(node.label);
+                                            }}
+                                            className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                                            title="刪除 Zip"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                    {path === "F-string" && onDeleteFstringPattern && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onDeleteFstringPattern(node.label);
+                                            }}
+                                            className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                                            title="刪除模式"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                    {path?.startsWith("Time >") && onDeleteTimeCondition && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                // Extract time type from path and reconstruct full condition
+                                                const timeType = path.replace("Time > ", "");
+                                                const fullCondition = `${timeType} ${node.label}`;
+                                                onDeleteTimeCondition(fullCondition);
+                                            }}
+                                            className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                                            title="刪除條件"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>
                         {hasChildren && isExpanded && (
-                            <div className="ml-5 pl-3 border-l border-dashed border-gray-200 animate-in slide-in-from-top-1 duration-200">
+                            <div className="ml-3 pl-3 border-l border-dashed border-gray-200 animate-in slide-in-from-top-1 duration-200">
                                 <HierarchyList
                                     nodes={node.children!}
                                     path={currentValue}
@@ -195,6 +437,12 @@ function HierarchyList({
                                     isEditableFolder={isEditableFolder}
                                     onAddFolder={onAddFolder}
                                     onDeleteFolder={onDeleteFolder}
+                                    onAddFstringPattern={onAddFstringPattern}
+                                    onDeleteFstringPattern={onDeleteFstringPattern}
+                                    onAddTimeCondition={onAddTimeCondition}
+                                    onDeleteTimeCondition={onDeleteTimeCondition}
+                                    onAddZipName={onAddZipName}
+                                    onDeleteZipName={onDeleteZipName}
                                     level={level + 1}
                                 />
                             </div>
@@ -202,7 +450,7 @@ function HierarchyList({
                     </div>
                 );
             })}
-        </div>
+        </div >
     );
 }
 
@@ -217,6 +465,14 @@ function HierarchicalDropdown({
     isEditableFolder,
     onAddFolder,
     onDeleteFolder,
+    onAddFstringPattern,
+    onDeleteFstringPattern,
+    onAddTimeCondition,
+    onDeleteTimeCondition,
+    onAddZipName,
+    onDeleteZipName,
+    onOpenChange,
+    isOpen,
     align = "left",
 }: {
     title: string;
@@ -228,10 +484,25 @@ function HierarchicalDropdown({
     isEditableFolder?: (path: string, label: string) => boolean;
     onAddFolder?: (folderName: string) => void;
     onDeleteFolder?: (folderName: string) => void;
+    onAddFstringPattern?: (pattern: string) => void;
+    onDeleteFstringPattern?: (pattern: string) => void;
+    onAddTimeCondition?: (condition: string) => void;
+    onDeleteTimeCondition?: (condition: string) => void;
+    onAddZipName?: (zipName: string) => void;
+    onDeleteZipName?: (zipName: string) => void;
+    onOpenChange?: (isOpen: boolean) => void;
+    isOpen?: boolean;
     align?: "left" | "right";
 }) {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement | null>(null);
+
+    // Sync internal state with external isOpen prop
+    useEffect(() => {
+        if (isOpen !== undefined && isOpen !== open) {
+            setOpen(isOpen);
+        }
+    }, [isOpen]);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -246,7 +517,11 @@ function HierarchicalDropdown({
     return (
         <div className="relative w-full" ref={containerRef}>
             <button
-                onClick={() => setOpen((prev) => !prev)}
+                onClick={() => {
+                    const newState = !open;
+                    setOpen(newState);
+                    onOpenChange?.(newState);
+                }}
                 className="w-full flex items-center justify-between border border-gray-300 rounded-full px-4 py-2 bg-white hover:bg-gray-50 shadow-inner"
             >
                 <span className={`text-sm ${selected ? "text-gray-900" : "text-gray-500"}`}>{selected || placeholder}</span>
@@ -255,7 +530,7 @@ function HierarchicalDropdown({
 
             {open && (
                 <div
-                    className={`absolute z-20 mt-2 min-w-full w-[420px] max-w-[720px] max-h-96 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-2xl ${align === "right" ? "right-0 left-auto" : "left-0 right-auto"
+                    className={`absolute z-20 mt-2 min-w-full w-[360px] max-w-[720px] max-h-96 overflow-y-auto rounded-xl border border-gray-200 bg-white shadow-2xl ${align === "right" ? "right-0 left-auto" : "left-0 right-auto"
                         }`}
                 >
                     <div className="px-3 py-2 text-sm font-semibold text-gray-900 border-b border-gray-200 bg-white">{title}</div>
@@ -270,6 +545,12 @@ function HierarchicalDropdown({
                             isEditableFolder={isEditableFolder}
                             onAddFolder={onAddFolder}
                             onDeleteFolder={onDeleteFolder}
+                            onAddFstringPattern={onAddFstringPattern}
+                            onDeleteFstringPattern={onDeleteFstringPattern}
+                            onAddTimeCondition={onAddTimeCondition}
+                            onDeleteTimeCondition={onDeleteTimeCondition}
+                            onAddZipName={onAddZipName}
+                            onDeleteZipName={onDeleteZipName}
                         />
                     </div>
                 </div>
@@ -361,6 +642,12 @@ type RulesPanelProps = {
     onRenameFolder?: (oldName: string, newName: string) => void;
     onAddFolder?: (folderName: string) => void;
     onDeleteFolder?: (folderName: string) => void;
+    onAddFstringPattern?: (pattern: string) => void;
+    onDeleteFstringPattern?: (pattern: string) => void;
+    onAddTimeCondition?: (condition: string) => void;
+    onDeleteTimeCondition?: (condition: string) => void;
+    onAddZipName?: (zipName: string) => void;
+    onDeleteZipName?: (zipName: string) => void;
     onAddRule: () => void;
     onSaveRule: () => void;
     onEditRule: (id: string) => void;
@@ -386,6 +673,12 @@ export function RulesPanel({
     onRenameFolder,
     onAddFolder,
     onDeleteFolder,
+    onAddFstringPattern,
+    onDeleteFstringPattern,
+    onAddTimeCondition,
+    onDeleteTimeCondition,
+    onAddZipName,
+    onDeleteZipName,
     onAddRule,
     onSaveRule,
     onEditRule,
@@ -396,6 +689,17 @@ export function RulesPanel({
     onApply,
     isApplying = false,
 }: RulesPanelProps) {
+    // State to track which dropdown is open (mutual exclusion)
+    const [openDropdown, setOpenDropdown] = useState<'subject' | 'action' | null>(null);
+
+    const handleSubjectOpenChange = (isOpen: boolean) => {
+        setOpenDropdown(isOpen ? 'subject' : null);
+    };
+
+    const handleActionOpenChange = (isOpen: boolean) => {
+        setOpenDropdown(isOpen ? 'action' : null);
+    };
+
     return (
         <div className="flex flex-col h-full">
             <div className="px-4 py-3 border-b border-gray-200 bg-white flex items-center justify-between">
@@ -411,6 +715,12 @@ export function RulesPanel({
                         selected={selectedSubject}
                         options={subjectOptions || defaultSubjectOptions}
                         onSelect={onSelectSubject}
+                        onAddFstringPattern={onAddFstringPattern}
+                        onDeleteFstringPattern={onDeleteFstringPattern}
+                        onAddTimeCondition={onAddTimeCondition}
+                        onDeleteTimeCondition={onDeleteTimeCondition}
+                        onOpenChange={handleSubjectOpenChange}
+                        isOpen={openDropdown === 'subject'}
                         align="left"
                     />
                     <HierarchicalDropdown
@@ -422,6 +732,10 @@ export function RulesPanel({
                         onRename={onRenameFolder}
                         onAddFolder={onAddFolder}
                         onDeleteFolder={onDeleteFolder}
+                        onAddZipName={onAddZipName}
+                        onDeleteZipName={onDeleteZipName}
+                        onOpenChange={handleActionOpenChange}
+                        isOpen={openDropdown === 'action'}
                         align="right"
                     />
                     <button
@@ -510,7 +824,7 @@ function SavedRuleItem({
     onDelete: () => void;
     menuRef: React.RefObject<HTMLDivElement | null>;
 }) {
-// 判斷是否為群組
+    // 判斷是否為群組
     const isGroup = rule.rules && rule.rules.length > 0;
     const ruleCount = isGroup ? rule.rules!.length : 1;
     const hasRegion = !!rule.selectedRegion;

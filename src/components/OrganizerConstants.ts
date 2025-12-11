@@ -9,9 +9,24 @@ export const subjectOptions: HierarchyNode[] = [
     {
         label: "Time",
         children: [
-            { label: "Last Accessed" },
-            { label: "Create Time" },
-            { label: "Last Modified" },
+            {
+                label: "Last Accessed",
+                children: [
+                    { label: "__INPUT__" },
+                ],
+            },
+            {
+                label: "Create Time",
+                children: [
+                    { label: "__INPUT__" },
+                ],
+            },
+            {
+                label: "Last Modified",
+                children: [
+                    { label: "__INPUT__" },
+                ],
+            },
         ],
     },
     {
@@ -24,7 +39,12 @@ export const subjectOptions: HierarchyNode[] = [
             { label: "image" },
         ],
     },
-    { label: "f-string" },
+    {
+        label: "F-string",
+        children: [
+            { label: "__INPUT__" },
+        ],
+    },
 ];
 
 export const actionOptions: HierarchyNode[] = [
@@ -44,16 +64,23 @@ export const actionOptions: HierarchyNode[] = [
 ];
 
 /**
- * Generate dynamic action options based on user-created folders
+ * Generate dynamic action options based on user-created folders and zip names
  */
-export function getActionOptionsWithFolders(folders: string[]): HierarchyNode[] {
+export function getActionOptionsWithFolders(folders: string[], zipNames: string[] = []): HierarchyNode[] {
     // Create children for "Put in folder": existing folders + input field
     const putInFolderChildren: HierarchyNode[] = [
         ...folders.map(folder => ({ label: folder })),
         { label: '__INPUT__' }, // Special marker for input field rendering
     ];
 
+    // Zip uses its own separate list
+    const zipChildren: HierarchyNode[] = [
+        ...zipNames.map(zipName => ({ label: zipName })),
+        { label: '__INPUT__' },
+    ];
+
     return [
+        { label: "Delete" }, // Moved to top
         {
             label: "Sort",
             children: [
@@ -68,8 +95,10 @@ export function getActionOptionsWithFolders(folders: string[]): HierarchyNode[] 
             label: "Put in folder",
             children: putInFolderChildren,
         },
-        { label: "Delete" },
-        { label: "zip" },
+        {
+            label: "Zip", // Changed from "zip" to "Zip"
+            children: zipChildren,
+        },
     ];
 }
 
@@ -107,7 +136,9 @@ function extractFileExtensions(items: Array<{ label: string; type: string; path?
  */
 export function getSubjectOptionsWithTags(
     tags: Array<{ name: string }>,
-    items: Array<{ label: string; type: string; path?: string }>
+    items: Array<{ label: string; type: string; path?: string }>,
+    fstringPatterns: string[] = [],
+    timeConditions: string[] = []
 ): HierarchyNode[] {
     // Extract actual file extensions from desktop items
     const fileExtensions = extractFileExtensions(items);
@@ -136,16 +167,46 @@ export function getSubjectOptionsWithTags(
         {
             label: "Time",
             children: [
-                { label: "Last Accessed" },
-                { label: "Create Time" },
-                { label: "Last Modified" },
+                {
+                    label: "Last Accessed",
+                    children: [
+                        ...timeConditions
+                            .filter(tc => tc.startsWith("Last Accessed "))
+                            .map(tc => ({ label: tc.replace("Last Accessed ", "").trim() })),
+                        { label: "__INPUT__" },
+                    ],
+                },
+                {
+                    label: "Create Time",
+                    children: [
+                        ...timeConditions
+                            .filter(tc => tc.startsWith("Create Time "))
+                            .map(tc => ({ label: tc.replace("Create Time ", "").trim() })),
+                        { label: "__INPUT__" },
+                    ],
+                },
+                {
+                    label: "Last Modified",
+                    children: [
+                        ...timeConditions
+                            .filter(tc => tc.startsWith("Last Modified "))
+                            .map(tc => ({ label: tc.replace("Last Modified ", "").trim() })),
+                        { label: "__INPUT__" },
+                    ],
+                },
             ],
         },
         {
             label: "File Type",
             children: fileTypeChildren,
         },
-        { label: "f-string" },
+        {
+            label: "F-string",
+            children: [
+                ...fstringPatterns.map(pattern => ({ label: pattern })),
+                { label: "__INPUT__" },
+            ],
+        },
     ];
 }
 

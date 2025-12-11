@@ -43,52 +43,51 @@ function DraggablePreviewFile({
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`absolute flex flex-col items-center gap-1 p-1 w-20 cursor-grab active:cursor-grabbing transition-all ${
-        isSelected ? 'ring-2 ring-blue-500 ring-offset-1 bg-blue-500/20 rounded' : ''
-      }`}
-              style={{
-                left: item.x * scale,
-                top: item.y * scale,
+      className={`absolute flex flex-col items-center gap-1 p-1 w-20 cursor-grab active:cursor-grabbing transition-all ${isSelected ? 'ring-2 ring-blue-500 ring-offset-1 bg-blue-500/20 rounded' : ''
+        }`}
+      style={{
+        left: item.x * scale,
+        top: item.y * scale,
         transform: dragStyle ? `${dragStyle} scale(${scale})` : `scale(${scale})`,
-                transformOrigin: "top left",
+        transformOrigin: "top left",
         opacity: isDragging ? 0.5 : 1,
-              }}
-            >
+      }}
+    >
       <div className="w-12 h-12 flex items-center justify-center">
-                {iconSrc ? (
-                  <img
-                    src={iconSrc}
-                    alt={item.label}
+        {iconSrc ? (
+          <img
+            src={iconSrc}
+            alt={item.label}
             className="w-full h-full object-contain drop-shadow pointer-events-none"
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = `${import.meta.env.BASE_URL || "/"}icons/organizer.svg`;
-                    }}
-                  />
-                ) : (
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = `${import.meta.env.BASE_URL || "/"}icons/organizer.svg`;
+            }}
+          />
+        ) : (
           <div className="w-full h-full bg-gray-400/50 rounded-lg flex items-center justify-center backdrop-blur-sm">
             <Monitor className="w-8 h-8 text-white/80" />
           </div>
-                )}
-              </div>
+        )}
+      </div>
       <div
         className="text-white text-xs font-normal drop-shadow-md text-center select-none px-1 rounded-sm line-clamp-2"
         style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
       >
         {item.label}
-              </div>
+      </div>
     </div>
   );
 }
 
-function DesktopPreview({ 
-  previewItems, 
+function DesktopPreview({
+  previewItems,
   isPreviewMode,
   selectedRegion,
   onRegionChange,
   selectedItemIds,
-}: { 
-  previewItems: DesktopItem[]; 
+}: {
+  previewItems: DesktopItem[];
   isPreviewMode?: boolean;
   selectedRegion?: { x: number; y: number; width: number; height: number } | null;
   onRegionChange?: (region: { x: number; y: number; width: number; height: number } | null) => void;
@@ -207,10 +206,10 @@ function DesktopPreview({
         onMouseLeave={handleMouseUp}
       >
         {previewItems.map((item) => (
-          <DraggablePreviewFile 
-            key={item.id} 
-            item={item} 
-            scale={scale} 
+          <DraggablePreviewFile
+            key={item.id}
+            item={item}
+            scale={scale}
             isSelected={selectedItemIds?.has(item.id)}
           />
         ))}
@@ -233,28 +232,28 @@ function DesktopPreview({
         {selectedRegion && (
           <div className="absolute top-2 left-2 bg-blue-500 text-white px-2 py-1 rounded text-xs font-medium">
             已選擇區域
-        </div>
-      )}
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-export function OrganizerApp({ 
-    savedRules, 
-    setSavedRules,
-    tags,
-    setTags,
-    historyItems,
-    setHistoryItems
-  }: { 
-    savedRules: SimpleRule[]; 
-    setSavedRules: React.Dispatch<React.SetStateAction<SimpleRule[]>>; 
-    tags: TagItem[]; 
-    setTags: React.Dispatch<React.SetStateAction<TagItem[]>>;
-    historyItems: HistoryEntry[];
-    setHistoryItems: React.Dispatch<React.SetStateAction<HistoryEntry[]>>;
-  }) {
+export function OrganizerApp({
+  savedRules,
+  setSavedRules,
+  tags,
+  setTags,
+  historyItems,
+  setHistoryItems
+}: {
+  savedRules: SimpleRule[];
+  setSavedRules: React.Dispatch<React.SetStateAction<SimpleRule[]>>;
+  tags: TagItem[];
+  setTags: React.Dispatch<React.SetStateAction<TagItem[]>>;
+  historyItems: HistoryEntry[];
+  setHistoryItems: React.Dispatch<React.SetStateAction<HistoryEntry[]>>;
+}) {
   const [tab, setTab] = useState<"rule" | "tag" | "history" | "saved">("tag");
 
   // Load rules from localStorage or use default
@@ -280,9 +279,6 @@ export function OrganizerApp({
   const ruleMenuRef = useRef<HTMLDivElement | null>(null);
   const [subjectSelection, setSubjectSelection] = useState<string>("");
   const [actionSelection, setActionSelection] = useState<string>("");
-  const [patternInput, setPatternInput] = useState<string>("");
-  const [timeValue, setTimeValue] = useState<string>("");
-  const [timeUnit, setTimeUnit] = useState<'day' | 'month' | 'year'>('day');
   // Load folders from localStorage or start with empty array
   const [folders, setFolders] = useState<string[]>(() => {
     const savedFolders = localStorage.getItem('organizerFolders');
@@ -291,6 +287,45 @@ export function OrganizerApp({
         return JSON.parse(savedFolders);
       } catch (e) {
         console.error('Failed to parse saved folders:', e);
+      }
+    }
+    return [];
+  });
+
+  // Load F-string patterns from localStorage
+  const [fstringPatterns, setFstringPatterns] = useState<string[]>(() => {
+    const saved = localStorage.getItem('organizerFstringPatterns');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse saved F-string patterns:', e);
+      }
+    }
+    return [];
+  });
+
+  // Load Time conditions from localStorage
+  const [timeConditions, setTimeConditions] = useState<string[]>(() => {
+    const saved = localStorage.getItem('organizerTimeConditions');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse saved Time conditions:', e);
+      }
+    }
+    return [];
+  });
+
+  // Load Zip names from localStorage (separate from folders)
+  const [zipNames, setZipNames] = useState<string[]>(() => {
+    const saved = localStorage.getItem('organizerZipNames');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse saved Zip names:', e);
       }
     }
     return [];
@@ -370,6 +405,21 @@ export function OrganizerApp({
     localStorage.setItem('organizerFolders', JSON.stringify(folders));
   }, [folders]);
 
+  // Save F-string patterns to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('organizerFstringPatterns', JSON.stringify(fstringPatterns));
+  }, [fstringPatterns]);
+
+  // Save Time conditions to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('organizerTimeConditions', JSON.stringify(timeConditions));
+  }, [timeConditions]);
+
+  // Save Zip names to localStorage
+  useEffect(() => {
+    localStorage.setItem('organizerZipNames', JSON.stringify(zipNames));
+  }, [zipNames]);
+
   const handleRollback = (id: string) => {
     const entry = historyItems.find((item) => item.id === id);
     if (entry && entry.items) {
@@ -396,27 +446,17 @@ export function OrganizerApp({
 
     // Build the complete subject text
     let finalSubject = subjectSelection;
-    if (subjectSelection === 'f-string') {
-      if (!patternInput.trim()) {
-        alert("請輸入 f-string pattern");
-        return;
-      }
-      finalSubject = `f-string: ${patternInput.trim()}`;
-    } else if (subjectSelection.startsWith('Time > ')) {
-      const timeType = subjectSelection.replace('Time > ', '');
-      if (!timeValue.trim()) {
-        alert("請輸入時間範圍");
-        return;
-      }
-      finalSubject = `Time > ${timeType} within ${timeValue} ${timeUnit}`;
-    }
+
+    // For F-string and Time, the selection already contains the complete info
+    // e.g., "F-string: *.txt" or "Time > Last Accessed within 2024-12-10"
+    // No need to modify them further
 
     // Build the complete action text
     let finalAction = actionSelection;
     if (actionSelection.startsWith('Put in folder > ')) {
       const folderPart = actionSelection.replace('Put in folder > ', '');
 
-      // Handle "New folder..." option
+      // Handle "New folder..." option (though this is now handled via input field)
       if (folderPart === 'New folder...') {
         const newFolderName = window.prompt('請輸入新資料夾名稱:');
         if (!newFolderName || !newFolderName.trim()) {
@@ -429,24 +469,45 @@ export function OrganizerApp({
           setFolders((prev) => [...prev, trimmedName]);
         }
 
-        finalAction = `Put in "${trimmedName}" folder`;
+        finalAction = `Put in \"${trimmedName}\" folder`;
       } else {
         // Use selected folder from the list
-        finalAction = `Put in "${folderPart}" folder`;
+        finalAction = `Put in \"${folderPart}\" folder`;
       }
+    } else if (actionSelection.startsWith('Zip > ')) {
+      const folderPart = actionSelection.replace('Zip > ', '');
+
+      // Handle input from Zip folder selection
+      if (folderPart === 'New folder...') {
+        const newFolderName = window.prompt('請輸入新 Zip 檔案名稱:');
+        if (!newFolderName || !newFolderName.trim()) {
+          return; // User cancelled or entered empty name
+        }
+        const trimmedName = newFolderName.trim();
+
+        // Add to folders list if not already exists (shared with Put in folder)
+        if (!folders.includes(trimmedName)) {
+          setFolders((prev) => [...prev, trimmedName]);
+        }
+
+        finalAction = `Zip in \"${trimmedName}\" folder`;
+      } else {
+        // Use selected folder name from the list
+        finalAction = `Zip in \"${folderPart}\" folder`;
+      }
+    } else if (actionSelection === "Delete") {
+      // Delete action doesn't need modification
+      finalAction = "Delete";
     }
 
     const text = `${finalSubject} + ${finalAction}`;
-    setRules((prev) => [...prev, { 
-      id: `rule-${Date.now()}`, 
+    setRules((prev) => [...prev, {
+      id: `rule-${Date.now()}`,
       text,
       selectedRegion: selectedRegion, // 將當前區域選取保存到規則對象
     }]);
     setSubjectSelection("");
     setActionSelection("");
-    setPatternInput("");
-    setTimeValue("");
-    setTimeUnit('day');
   };
 
   const handleRemoveRule = (id: string) => {
@@ -454,37 +515,37 @@ export function OrganizerApp({
   };
 
   const handleSaveRule = () => {
-      // 如果規則列表是空的，就不儲存
-      if (rules.length === 0) {
-        alert("目前沒有任何規則可以儲存");
-        return;
-      }
+    // 如果規則列表是空的，就不儲存
+    if (rules.length === 0) {
+      alert("目前沒有任何規則可以儲存");
+      return;
+    }
 
-      // 跳出命名視窗
-      const defaultName = `My Rule Set ${savedRules.length + 1}`;
-      const ruleName = window.prompt("請為此規則組合輸入名稱:", defaultName);
+    // 跳出命名視窗
+    const defaultName = `My Rule Set ${savedRules.length + 1}`;
+    const ruleName = window.prompt("請為此規則組合輸入名稱:", defaultName);
 
-      if (ruleName === null) return; // 使用者按取消
+    if (ruleName === null) return; // 使用者按取消
 
-      const finalName = ruleName.trim() || defaultName;
+    const finalName = ruleName.trim() || defaultName;
 
-      // 建立一個包含當前所有規則的物件
-      // 規則對象已經包含各自的區域信息，所以直接複製即可
-      const newSavedRule: SimpleRule = {
-        id: `saved-${Date.now()}`,
-        name: finalName,
-        text: `${rules.length} rules`, // 這裡的 text 僅作顯示用途(fallback)
-        // 關鍵：將目前的 rules 陣列完整複製一份存起來（包含各自的區域信息）
-        rules: rules.map(rule => ({
-          ...rule,
-          // 確保每個規則都包含區域信息（如果有的話）
-          selectedRegion: rule.selectedRegion ?? selectedRegion,
-        })),
-        // 保存全局區域選取作為後備（向後兼容）
-        selectedRegion: selectedRegion,
-      };
+    // 建立一個包含當前所有規則的物件
+    // 規則對象已經包含各自的區域信息，所以直接複製即可
+    const newSavedRule: SimpleRule = {
+      id: `saved-${Date.now()}`,
+      name: finalName,
+      text: `${rules.length} rules`, // 這裡的 text 僅作顯示用途(fallback)
+      // 關鍵：將目前的 rules 陣列完整複製一份存起來（包含各自的區域信息）
+      rules: rules.map(rule => ({
+        ...rule,
+        // 確保每個規則都包含區域信息（如果有的話）
+        selectedRegion: rule.selectedRegion ?? selectedRegion,
+      })),
+      // 保存全局區域選取作為後備（向後兼容）
+      selectedRegion: selectedRegion,
+    };
 
-      setSavedRules((prev) => [newSavedRule, ...prev]);
+    setSavedRules((prev) => [newSavedRule, ...prev]);
   };
 
   const handleRuleDragEnd = (event: DragEndEvent) => {
@@ -519,23 +580,23 @@ export function OrganizerApp({
         // 保留規則的區域信息，如果沒有則使用保存規則的全局區域（向後兼容）
         selectedRegion: r.selectedRegion ?? savedItem.selectedRegion,
       }));
-      
+
       // 將整組規則加入到現有列表的後方
       setRules((prev) => [...prev, ...newRules]);
-      
+
       // 如果有全局區域選取，也設置到組件狀態（用於 UI 顯示）
       if (savedItem.selectedRegion) {
         setSelectedRegion(savedItem.selectedRegion);
       }
     } else {
       // 情況 B: 舊的單一規則或是手動建立的單一規則
-      setRules((prev) => [...prev, { 
-        id: `rule-${Date.now()}`, 
+      setRules((prev) => [...prev, {
+        id: `rule-${Date.now()}`,
         text: savedItem.text,
         // 保留區域信息
         selectedRegion: savedItem.selectedRegion,
       }]);
-      
+
       // 如果有區域選取，設置到組件狀態（用於 UI 顯示）
       if (savedItem.selectedRegion) {
         setSelectedRegion(savedItem.selectedRegion);
@@ -577,26 +638,65 @@ export function OrganizerApp({
     setFolders((prev) => prev.filter(f => f !== folderName));
   };
 
+  const handleAddFstringPattern = (pattern: string) => {
+    if (!pattern.trim()) return;
+    const trimmedPattern = pattern.trim();
+    if (fstringPatterns.includes(trimmedPattern)) {
+      return; // Silently ignore duplicates
+    }
+    setFstringPatterns((prev) => [...prev, trimmedPattern]);
+  };
+
+  const handleDeleteFstringPattern = (pattern: string) => {
+    setFstringPatterns((prev) => prev.filter(p => p !== pattern));
+  };
+
+  const handleAddTimeCondition = (condition: string) => {
+    if (!condition.trim()) return;
+    const trimmedCondition = condition.trim();
+    if (timeConditions.includes(trimmedCondition)) {
+      return; // Silently ignore duplicates
+    }
+    setTimeConditions((prev) => [...prev, trimmedCondition]);
+  };
+
+  const handleDeleteTimeCondition = (condition: string) => {
+    setTimeConditions((prev) => prev.filter(c => c !== condition));
+  };
+
+  const handleAddZipName = (zipName: string) => {
+    if (!zipName.trim()) return;
+    const trimmedName = zipName.trim();
+    if (zipNames.includes(trimmedName)) {
+      return; // Silently ignore duplicates
+    }
+    setZipNames((prev) => [...prev, trimmedName]);
+  };
+
+  const handleDeleteZipName = (zipName: string) => {
+    setZipNames((prev) => prev.filter(z => z !== zipName));
+  };
+
   // Handle Preview
   // 過濾區域內的檔案（需要完全包覆，x 軸和 y 軸都需要完全包覆）
   const filterItemsByRegion = (itemsToFilter: DesktopItem[], region: { x: number; y: number; width: number; height: number } | null): DesktopItem[] => {
     if (!region) return itemsToFilter;
-    
+
     // 圖標大小：GRID_WIDTH x GRID_HEIGHT = 100x110px
     const iconWidth = 100;
     const iconHeight = 110;
-    
+
     return itemsToFilter.filter(item => {
       const itemX = item.x;
       const itemY = item.y;
       const itemRight = itemX + iconWidth;
       const itemBottom = itemY + iconHeight;
-      
+
       // 檢查檔案的整個圖標是否完全在區域內（x 軸和 y 軸都需要完全包覆）
-      return itemX >= region.x && 
-             itemRight <= region.x + region.width &&
-             itemY >= region.y && 
-             itemBottom <= region.y + region.height;
+      return itemX >= region.x &&
+        itemRight <= region.x + region.width &&
+        itemY >= region.y &&
+        itemBottom <= region.y + region.height;
     });
   };
 
@@ -628,7 +728,7 @@ export function OrganizerApp({
       if (parsed) {
         // 從規則對象讀取區域信息，如果沒有則使用全局的 selectedRegion（向後兼容）
         const ruleRegion = rule.selectedRegion ?? selectedRegion;
-        
+
         // 如果有限定區域，只對區域內的檔案執行規則
         const context: RuleContext = {
           items: ruleRegion ? filterItemsByRegion(resultItems, ruleRegion) : resultItems,
@@ -640,7 +740,7 @@ export function OrganizerApp({
           // 合併結果：保留區域外的檔案，更新區域內的檔案
           if (ruleRegion) {
             const regionItems = filterItemsByRegion(resultItems, ruleRegion);
-            const nonRegionItems = resultItems.filter(item => 
+            const nonRegionItems = resultItems.filter(item =>
               !regionItems.some(ri => ri.id === item.id)
             );
             resultItems = [...nonRegionItems, ...result.items];
@@ -679,7 +779,7 @@ export function OrganizerApp({
         if (parsed) {
           // 從規則對象讀取區域信息，如果沒有則使用全局的 selectedRegion（向後兼容）
           const ruleRegion = rule.selectedRegion ?? selectedRegion;
-          
+
           // 如果有限定區域，只對區域內的檔案執行規則
           const context: RuleContext = {
             items: ruleRegion ? filterItemsByRegion(resultItems, ruleRegion) : resultItems,
@@ -691,7 +791,7 @@ export function OrganizerApp({
             // 合併結果：保留區域外的檔案，更新區域內的檔案
             if (ruleRegion) {
               const regionItems = filterItemsByRegion(resultItems, ruleRegion);
-              const nonRegionItems = resultItems.filter(item => 
+              const nonRegionItems = resultItems.filter(item =>
                 !regionItems.some(ri => ri.id === item.id)
               );
               resultItems = [...nonRegionItems, ...result.items];
@@ -713,7 +813,7 @@ export function OrganizerApp({
         // 1. Save "Before" state (Manual Changes) if different from last applied
         // If lastAppliedItems is null, we assume it's different (first run or cleared)
         const isDifferent = !lastAppliedItems || JSON.stringify(items) !== JSON.stringify(lastAppliedItems);
-        
+
         if (isDifferent) {
           const thumbnailBefore = await generateThumbnail(items);
           const beforeHistoryEntry: HistoryEntry = {
@@ -905,15 +1005,15 @@ export function OrganizerApp({
       // 只有在 overId 是 tag.id 且不是檔案拖放時才進行排序
       const isTagId = tags.some(tag => tag.id === overId);
       if (isTagId && activeId !== overId && !activeId.startsWith("file-") && !activeId.startsWith("preview-file-")) {
-      setTags((items) => {
+        setTags((items) => {
           const oldIndex = items.findIndex((item) => item.id === activeId);
           const newIndex = items.findIndex((item) => item.id === overId);
 
           if (oldIndex !== -1 && newIndex !== -1) {
-        return arrayMove(items, oldIndex, newIndex);
+            return arrayMove(items, oldIndex, newIndex);
           }
           return items;
-      });
+        });
       }
     }
   };
@@ -928,11 +1028,11 @@ export function OrganizerApp({
     setGeminiApiKey(apiKey);
     setShowApiKeyDialog(false);
     setApiKeyInput("");
-    
+
     // 執行待處理的操作（使用 setTimeout 確保 sessionStorage 已更新）
     const action = pendingAction;
     setPendingAction(null);
-    
+
     setTimeout(() => {
       if (action === "generate") {
         handleAIGenerateTags();
@@ -945,14 +1045,14 @@ export function OrganizerApp({
   // AI Generate Tag 功能（現在會同時分配檔案）
   const handleAIGenerateTags = async () => {
     if (isGeneratingTags) return;
-    
+
     // 檢查是否有 API Key
     if (!hasGeminiApiKey()) {
       setPendingAction("generate");
       setShowApiKeyDialog(true);
       return;
     }
-    
+
     setIsGeneratingTags(true);
     try {
       // 獲取桌面上的所有檔案
@@ -1018,7 +1118,7 @@ export function OrganizerApp({
           const uniqueFilesAssigned = new Set(
             result.assignments.flatMap(a => a.files)
           ).size;
-          
+
           alert(`成功生成 ${newTags.length} 個新標籤並分配檔案！\n\n共對 ${uniqueFilesAssigned} 個檔案分配了 ${totalAssignments} 個標籤。`);
         }, 0);
       } else {
@@ -1046,7 +1146,7 @@ export function OrganizerApp({
 
     // 排除 "ALL" 標籤
     const existingTags = tags.filter(t => t.id !== 'all');
-    
+
     if (existingTags.length === 0) {
       alert('請先創建至少一個標籤（除了 ALL）');
       return;
@@ -1115,13 +1215,13 @@ export function OrganizerApp({
 
   // Generate dynamic subject options based on actual tags and file types
   const dynamicSubjectOptions = useMemo(() => {
-    return getSubjectOptionsWithTags(tags, items);
-  }, [tags, items]);
+    return getSubjectOptionsWithTags(tags, items, fstringPatterns, timeConditions);
+  }, [tags, items, fstringPatterns, timeConditions]);
 
-  // Generate dynamic action options based on user folders
+  // Generate dynamic action options based on folders and zip names
   const dynamicActionOptions = useMemo(() => {
-    return getActionOptionsWithFolders(folders);
-  }, [folders]);
+    return getActionOptionsWithFolders(folders, zipNames);
+  }, [folders, zipNames]);
 
   // Use RulesPanel component instead of inline JSX
   const ruleList = (
@@ -1139,6 +1239,12 @@ export function OrganizerApp({
       onRenameFolder={handleRenameFolder}
       onAddFolder={handleAddFolder}
       onDeleteFolder={handleDeleteFolder}
+      onAddFstringPattern={handleAddFstringPattern}
+      onDeleteFstringPattern={handleDeleteFstringPattern}
+      onAddTimeCondition={handleAddTimeCondition}
+      onDeleteTimeCondition={handleDeleteTimeCondition}
+      onAddZipName={handleAddZipName}
+      onDeleteZipName={handleDeleteZipName}
       onAddRule={handleAddRule}
       onSaveRule={handleSaveRule}
       onEditRule={handleEditRule}
@@ -1167,60 +1273,60 @@ export function OrganizerApp({
 
   return (
     <DndContext onDragEnd={handleTagDragEnd}>
-    <div className="h-full flex flex-col bg-[#d8d8d8] p-4 gap-4 text-gray-900">
-      <div className="flex flex-1 gap-4 min-h-0">
+      <div className="h-full flex flex-col bg-[#d8d8d8] p-4 gap-4 text-gray-900">
+        <div className="flex flex-1 gap-4 min-h-0">
           <div className="flex-4 flex flex-col min-w-[520px]">
             <div className="h-full rounded-2xl overflow-hidden shadow-inner border border-gray-500 bg-linear-to-b from-gray-800 to-gray-700 relative">
               {selectedRegion && (
-                    <button
+                <button
                   onClick={() => setSelectedRegion(null)}
                   className="absolute top-2 right-2 z-10 bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg shadow-lg text-sm font-medium flex items-center gap-2"
                   title="清除選中區域"
                 >
                   <X size={16} />
                   清除區域
-                    </button>
+                </button>
               )}
-              <DesktopPreview 
-                previewItems={previewItems} 
+              <DesktopPreview
+                previewItems={previewItems}
                 isPreviewMode={isPreviewMode}
                 selectedRegion={selectedRegion}
                 onRegionChange={setSelectedRegion}
                 selectedItemIds={selectedItemIds}
               />
+            </div>
           </div>
-        </div>
 
           <div className="flex-1 bg-white rounded-2xl border border-gray-300 shadow overflow-visible min-w-[400px] flex flex-col">
-          <div className="bg-gray-100 border-b border-gray-200 flex">
-            <button
+            <div className="bg-gray-100 border-b border-gray-200 flex">
+              <button
                 onClick={() => setTab("tag")}
                 className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "tag" ? "bg-white border-b-2 border-white" : "text-gray-600"
-              }`}
-            >
+                  }`}
+              >
                 Tag
-            </button>
-            <button
+              </button>
+              <button
                 onClick={() => setTab("rule")}
                 className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "rule" ? "bg-white border-b-2 border-white" : "text-gray-600"
-              }`}
-            >
+                  }`}
+              >
                 Rules
-            </button>
-            <button
-              onClick={() => setTab("history")}
+              </button>
+              <button
+                onClick={() => setTab("history")}
                 className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "history" ? "bg-white border-b-2 border-white" : "text-gray-600"
-              }`}
-            >
-              History
-            </button>
-                <button
+                  }`}
+              >
+                History
+              </button>
+              <button
                 onClick={() => setTab("saved")}
                 className={`cursor-pointer active:scale-95 flex-1 py-3 text-center font-semibold ${tab === "saved" ? "bg-white border-b-2 border-white" : "text-gray-600"
                   }`}
-                >
+              >
                 Saved
-                </button>
+              </button>
             </div>
 
             <div className={`flex-1 ${tab === "rule" ? "overflow-visible" : "overflow-hidden"}`}>
@@ -1236,7 +1342,7 @@ export function OrganizerApp({
                   onToggleExpand={toggleTagExpand}
                   onStartEdit={startEditingTag}
                   onSaveEdit={saveTagName}
-                            onEditChange={setEditingName}
+                  onEditChange={setEditingName}
                   onColorChange={updateTagColor}
                   onRemoveFile={removeFileFromTag}
                   onGenerateTags={handleAIGenerateTags}
@@ -1247,7 +1353,7 @@ export function OrganizerApp({
 
               {tab === "rule" && ruleList}
 
-            {tab === "history" && (
+              {tab === "history" && (
                 <HistoryPanel
                   historyItems={historyItems}
                   onToggleStar={toggleHistoryStar}
@@ -1265,83 +1371,83 @@ export function OrganizerApp({
                   onAddToApplied={addSavedToApplied}
                   onDelete={deleteSavedRule}
                 />
-            )}
+              )}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* API Key 輸入對話框 */}
-      {showApiKeyDialog && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-semibold text-gray-900">輸入 Gemini API Key</h2>
-              <button
-                onClick={() => {
-                  setShowApiKeyDialog(false);
-                  setApiKeyInput("");
-                  setPendingAction(null);
-                }}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <X size={20} />
-              </button>
+        {/* API Key 輸入對話框 */}
+        {showApiKeyDialog && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md mx-4">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-gray-900">輸入 Gemini API Key</h2>
+                <button
+                  onClick={() => {
+                    setShowApiKeyDialog(false);
+                    setApiKeyInput("");
+                    setPendingAction(null);
+                  }}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">
+                要使用 AI 功能，請輸入您的 Gemini API Key。此 Key 將僅存儲在本次會話中，刷新頁面後會清除。
+              </p>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Gemini API Key
+                </label>
+                <input
+                  type="password"
+                  value={apiKeyInput}
+                  onChange={(e) => setApiKeyInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleApiKeySubmit();
+                    }
+                  }}
+                  placeholder="請輸入您的 Gemini API Key"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+                  autoFocus
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowApiKeyDialog(false);
+                    setApiKeyInput("");
+                    setPendingAction(null);
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleApiKeySubmit}
+                  className="flex-1 px-4 py-2 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors"
+                >
+                  確認
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-4">
+                提示：您可以在{" "}
+                <a
+                  href="https://makersuite.google.com/app/apikey"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-orange-400 hover:text-orange-500 underline"
+                >
+                  Google AI Studio
+                </a>{" "}
+                獲取 API Key
+              </p>
             </div>
-            <p className="text-sm text-gray-600 mb-4">
-              要使用 AI 功能，請輸入您的 Gemini API Key。此 Key 將僅存儲在本次會話中，刷新頁面後會清除。
-            </p>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Gemini API Key
-              </label>
-              <input
-                type="password"
-                value={apiKeyInput}
-                onChange={(e) => setApiKeyInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    handleApiKeySubmit();
-                  }
-                }}
-                placeholder="請輸入您的 Gemini API Key"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
-                autoFocus
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowApiKeyDialog(false);
-                  setApiKeyInput("");
-                  setPendingAction(null);
-                }}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                取消
-              </button>
-              <button
-                onClick={handleApiKeySubmit}
-                className="flex-1 px-4 py-2 bg-orange-400 text-white rounded-lg hover:bg-orange-500 transition-colors"
-              >
-                確認
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-4">
-              提示：您可以在{" "}
-              <a
-                href="https://makersuite.google.com/app/apikey"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-orange-400 hover:text-orange-500 underline"
-              >
-                Google AI Studio
-              </a>{" "}
-              獲取 API Key
-            </p>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
     </DndContext>
   );
 }
