@@ -241,7 +241,7 @@ function HierarchyList({
                                             onChange={(e) => setTimeDuration(e.target.value)}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter') {
-                                                    const condition = `${timeType}:${timeMode} ${timeDuration}`;
+                                                    const condition = `${timeType} ${timeMode} ${timeDuration}`;
                                                     onSelect(`Time > ${timeType} ${timeMode} ${timeDuration}`);
                                                     onAddTimeCondition?.(condition);
                                                 }
@@ -263,7 +263,7 @@ function HierarchyList({
                                             onChange={(e) => setTimeDate(e.target.value)}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' && timeDate) {
-                                                    const condition = `${timeType}:${timeMode} ${timeDate}`;
+                                                    const condition = `${timeType} ${timeMode} ${timeDate}`;
                                                     onSelect(`Time > ${timeType} ${timeMode} ${timeDate}`);
                                                     onAddTimeCondition?.(condition);
                                                     setTimeDate("");
@@ -279,11 +279,11 @@ function HierarchyList({
                                         onClick={() => {
                                             let condition: string;
                                             if (isDurationMode) {
-                                                condition = `${timeType}:${timeMode} ${timeDuration}`;
+                                                condition = `${timeType} ${timeMode} ${timeDuration}`;
                                                 onSelect(`Time > ${timeType} ${timeMode} ${timeDuration}`);
                                                 onAddTimeCondition?.(condition);
                                             } else if (timeDate) {
-                                                condition = `${timeType}:${timeMode} ${timeDate}`;
+                                                condition = `${timeType} ${timeMode} ${timeDate}`;
                                                 onSelect(`Time > ${timeType} ${timeMode} ${timeDate}`);
                                                 onAddTimeCondition?.(condition);
                                                 setTimeDate("");
@@ -415,7 +415,7 @@ function HierarchyList({
                                                 e.stopPropagation();
                                                 // Extract time type from path and reconstruct full condition
                                                 const timeType = path.replace("Time > ", "");
-                                                const fullCondition = `${timeType}:${node.label}`;
+                                                const fullCondition = `${timeType} ${node.label}`;
                                                 onDeleteTimeCondition(fullCondition);
                                             }}
                                             className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
@@ -450,7 +450,7 @@ function HierarchyList({
                     </div>
                 );
             })}
-        </div>
+        </div >
     );
 }
 

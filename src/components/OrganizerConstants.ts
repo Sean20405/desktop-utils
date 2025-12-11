@@ -171,8 +171,8 @@ export function getSubjectOptionsWithTags(
                     label: "Last Accessed",
                     children: [
                         ...timeConditions
-                            .filter(tc => tc.startsWith("Last Accessed:"))
-                            .map(tc => ({ label: tc.replace("Last Accessed:", "").trim() })),
+                            .filter(tc => tc.startsWith("Last Accessed "))
+                            .map(tc => ({ label: tc.replace("Last Accessed ", "").trim() })),
                         { label: "__INPUT__" },
                     ],
                 },
@@ -180,8 +180,8 @@ export function getSubjectOptionsWithTags(
                     label: "Create Time",
                     children: [
                         ...timeConditions
-                            .filter(tc => tc.startsWith("Create Time:"))
-                            .map(tc => ({ label: tc.replace("Create Time:", "").trim() })),
+                            .filter(tc => tc.startsWith("Create Time "))
+                            .map(tc => ({ label: tc.replace("Create Time ", "").trim() })),
                         { label: "__INPUT__" },
                     ],
                 },
@@ -189,8 +189,8 @@ export function getSubjectOptionsWithTags(
                     label: "Last Modified",
                     children: [
                         ...timeConditions
-                            .filter(tc => tc.startsWith("Last Modified:"))
-                            .map(tc => ({ label: tc.replace("Last Modified:", "").trim() })),
+                            .filter(tc => tc.startsWith("Last Modified "))
+                            .map(tc => ({ label: tc.replace("Last Modified ", "").trim() })),
                         { label: "__INPUT__" },
                     ],
                 },

@@ -78,17 +78,24 @@ export function parseDesktopInfo(
           currentItem.type = detectItemType(currentItem.label);
         }
 
-        // Generate timestamps
-        const createdDaysAgo = Math.floor(Math.random() * 90); // Created 0-90 days ago
-        const modifiedDaysAgo = Math.floor(Math.random() * createdDaysAgo); // Modified after creation
-        const accessedDaysAgo = Math.floor(Math.random() * modifiedDaysAgo); // Accessed after modification
+        // Only generate timestamps if not already set from file
+        if (!currentItem.createdTime) {
+          const createdDaysAgo = Math.floor(Math.random() * 90);
+          currentItem.createdTime = generateRandomTimestamp(createdDaysAgo, 30);
+        }
+        if (!currentItem.lastModified) {
+          const modifiedDaysAgo = Math.floor(Math.random() * 60);
+          currentItem.lastModified = generateRandomTimestamp(modifiedDaysAgo, 10);
+        }
+        if (!currentItem.lastAccessed) {
+          const accessedDaysAgo = Math.floor(Math.random() * 30);
+          currentItem.lastAccessed = generateRandomTimestamp(accessedDaysAgo, 5);
+        }
 
-        currentItem.createdTime = generateRandomTimestamp(createdDaysAgo, 30);
-        currentItem.lastModified = generateRandomTimestamp(modifiedDaysAgo, 10);
-        currentItem.lastAccessed = generateRandomTimestamp(accessedDaysAgo, 5);
-
-        // Generate file size
-        currentItem.fileSize = generateRandomFileSize(currentItem.type);
+        // Only generate file size if not already set
+        if (currentItem.fileSize === undefined) {
+          currentItem.fileSize = generateRandomFileSize(currentItem.type);
+        }
 
         items.push(currentItem as DesktopItem);
       }
@@ -127,6 +134,35 @@ export function parseDesktopInfo(
       if (imageMap.has(iconFilename)) {
         currentItem.imageUrl = imageMap.get(iconFilename);
       }
+      continue;
+    }
+
+    // Match 建立時間: ...
+    const createdMatch = trimmedLine.match(/^建立時間: (.+)$/);
+    if (createdMatch) {
+      currentItem.createdTime = createdMatch[1].trim();
+      continue;
+    }
+
+    // Match 修改時間: ...
+    const modifiedMatch = trimmedLine.match(/^修改時間: (.+)$/);
+    if (modifiedMatch) {
+      currentItem.lastModified = modifiedMatch[1].trim();
+      continue;
+    }
+
+    // Match 存取時間: ...
+    const accessedMatch = trimmedLine.match(/^存取時間: (.+)$/);
+    if (accessedMatch) {
+      currentItem.lastAccessed = accessedMatch[1].trim();
+      continue;
+    }
+
+    // Match 檔案大小: ... bytes
+    const sizeMatch = trimmedLine.match(/^檔案大小: (\d+) bytes$/);
+    if (sizeMatch) {
+      currentItem.fileSize = parseInt(sizeMatch[1], 10);
+      continue;
     }
   }
 
@@ -137,17 +173,24 @@ export function parseDesktopInfo(
       currentItem.type = detectItemType(currentItem.label);
     }
 
-    // Generate timestamps
-    const createdDaysAgo = Math.floor(Math.random() * 90);
-    const modifiedDaysAgo = Math.floor(Math.random() * createdDaysAgo);
-    const accessedDaysAgo = Math.floor(Math.random() * modifiedDaysAgo);
+    // Only generate timestamps if not already set from file
+    if (!currentItem.createdTime) {
+      const createdDaysAgo = Math.floor(Math.random() * 90);
+      currentItem.createdTime = generateRandomTimestamp(createdDaysAgo, 30);
+    }
+    if (!currentItem.lastModified) {
+      const modifiedDaysAgo = Math.floor(Math.random() * 60);
+      currentItem.lastModified = generateRandomTimestamp(modifiedDaysAgo, 10);
+    }
+    if (!currentItem.lastAccessed) {
+      const accessedDaysAgo = Math.floor(Math.random() * 30);
+      currentItem.lastAccessed = generateRandomTimestamp(accessedDaysAgo, 5);
+    }
 
-    currentItem.createdTime = generateRandomTimestamp(createdDaysAgo, 30);
-    currentItem.lastModified = generateRandomTimestamp(modifiedDaysAgo, 10);
-    currentItem.lastAccessed = generateRandomTimestamp(accessedDaysAgo, 5);
-
-    // Generate file size
-    currentItem.fileSize = generateRandomFileSize(currentItem.type);
+    // Only generate file size if not already set
+    if (currentItem.fileSize === undefined) {
+      currentItem.fileSize = generateRandomFileSize(currentItem.type);
+    }
 
     items.push(currentItem as DesktopItem);
   }

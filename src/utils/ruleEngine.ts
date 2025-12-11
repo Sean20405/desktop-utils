@@ -342,23 +342,38 @@ function filterByTimeDate(
         }
 
         let result = false;
-        switch (mode) {
-            case 'within':
-                // Files modified/accessed between targetDate and now
-                result = itemDate >= targetDate && itemDate <= now;
-                break;
-            case 'over':
-                // Files modified/accessed before targetDate (over X time ago)
-                result = itemDate < targetDate;
-                break;
-            case 'before':
-                // Files modified/accessed before targetDate
-                result = itemDate < targetDate;
-                break;
-            case 'after':
-                // Files modified/accessed after targetDate
-                result = itemDate > targetDate;
-                break;
+
+        // For before/after modes with date-only input, use date string comparison
+        // to avoid timezone issues
+        if (mode === 'before' || mode === 'after') {
+            // Extract just the date part (YYYY-MM-DD) from item's timestamp
+            const itemDateStr = itemDate.toISOString().split('T')[0];
+            const targetDateStr = dateStr;
+
+            switch (mode) {
+                case 'before':
+                    // before 2025-12-07 means before 2025-12-07 00:00:00
+                    // so we want dates < 2025-12-07
+                    result = itemDateStr < targetDateStr;
+                    break;
+                case 'after':
+                    // after 2025-12-07 means after 2025-12-07 00:00:00
+                    // so we want dates >= 2025-12-07
+                    result = itemDateStr >= targetDateStr;
+                    break;
+            }
+        } else {
+            // For within/over modes, use timestamp comparison
+            switch (mode) {
+                case 'within':
+                    // Files modified/accessed between targetDate and now
+                    result = itemDate >= targetDate && itemDate <= now;
+                    break;
+                case 'over':
+                    // Files modified/accessed before targetDate (over X time ago)
+                    result = itemDate < targetDate;
+                    break;
+            }
         }
 
         if (result) {
