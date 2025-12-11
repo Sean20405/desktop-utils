@@ -9,9 +9,24 @@ export const subjectOptions: HierarchyNode[] = [
     {
         label: "Time",
         children: [
-            { label: "Last Accessed" },
-            { label: "Create Time" },
-            { label: "Last Modified" },
+            {
+                label: "Last Accessed",
+                children: [
+                    { label: "__INPUT__" },
+                ],
+            },
+            {
+                label: "Create Time",
+                children: [
+                    { label: "__INPUT__" },
+                ],
+            },
+            {
+                label: "Last Modified",
+                children: [
+                    { label: "__INPUT__" },
+                ],
+            },
         ],
     },
     {
@@ -24,7 +39,12 @@ export const subjectOptions: HierarchyNode[] = [
             { label: "image" },
         ],
     },
-    { label: "f-string" },
+    {
+        label: "F-string",
+        children: [
+            { label: "__INPUT__" },
+        ],
+    },
 ];
 
 export const actionOptions: HierarchyNode[] = [
@@ -136,16 +156,36 @@ export function getSubjectOptionsWithTags(
         {
             label: "Time",
             children: [
-                { label: "Last Accessed" },
-                { label: "Create Time" },
-                { label: "Last Modified" },
+                {
+                    label: "Last Accessed",
+                    children: [
+                        { label: "__INPUT__" },
+                    ],
+                },
+                {
+                    label: "Create Time",
+                    children: [
+                        { label: "__INPUT__" },
+                    ],
+                },
+                {
+                    label: "Last Modified",
+                    children: [
+                        { label: "__INPUT__" },
+                    ],
+                },
             ],
         },
         {
             label: "File Type",
             children: fileTypeChildren,
         },
-        { label: "f-string" },
+        {
+            label: "F-string",
+            children: [
+                { label: "__INPUT__" },
+            ],
+        },
     ];
 }
 

@@ -97,13 +97,49 @@ function filterItemsBySubject(
         return filterByTag(items, tagName, tags || []);
     }
 
-    // Handle "f-string"
-    if (subject === "f-string" && params?.pattern) {
-        return filterByPattern(items, params.pattern);
+    // Handle "F-string: [pattern]" (new format with uppercase F)
+    if (subject.startsWith("F-string: ")) {
+        const pattern = subject.replace("F-string: ", "");
+        return filterByPattern(items, pattern);
     }
 
-    // Handle "Time > ..."
+    // Handle "Time > ..." (new format with within/over and date)
     if (subject.startsWith("Time > ")) {
+        // Parse the time filter from the subject string
+        // Format: "Time > [timeField] [within|over] [date]"
+        // Example: "Time > Last Accessed within 2024-12-10"
+        const timeStr = subject.replace("Time > ", "");
+        const parts = timeStr.split(" ");
+
+        if (parts.length >= 3) {
+            // Extract time field (could be multi-word like "Last Accessed")
+            let timeField: 'lastAccessed' | 'lastModified' | 'createdTime' | undefined;
+            let mode: 'within' | 'over' | undefined;
+            let dateStr: string | undefined;
+
+            // Find the mode keyword (within or over)
+            const modeIndex = parts.findIndex(p => p === 'within' || p === 'over');
+            if (modeIndex !== -1) {
+                mode = parts[modeIndex] as 'within' | 'over';
+                dateStr = parts.slice(modeIndex + 1).join(" ");
+
+                // Determine time field from the words before mode
+                const fieldName = parts.slice(0, modeIndex).join(" ");
+                if (fieldName === "Last Accessed") {
+                    timeField = 'lastAccessed';
+                } else if (fieldName === "Create Time") {
+                    timeField = 'createdTime';
+                } else if (fieldName === "Last Modified") {
+                    timeField = 'lastModified';
+                }
+
+                if (timeField && mode && dateStr) {
+                    return filterByTimeDate(items, timeField, mode, dateStr);
+                }
+            }
+        }
+
+        // Fallback: check if params are provided (backward compatibility)
         if (params?.timeField && params?.timeValue && params?.timeUnit) {
             return filterByTime(items, params.timeField, params.timeValue, params.timeUnit);
         }
@@ -189,6 +225,40 @@ function filterByTime(
     return items.filter(item => {
         const itemDate = new Date(item[timeField] || '');
         return itemDate >= threshold;
+    });
+}
+
+/**
+ * Filter items by time using date string and within/over mode
+ */
+function filterByTimeDate(
+    items: DesktopItem[],
+    timeField: 'lastAccessed' | 'lastModified' | 'createdTime',
+    mode: 'within' | 'over',
+    dateStr: string
+): DesktopItem[] {
+    const targetDate = new Date(dateStr);
+    const now = new Date();
+
+    // Validate date
+    if (isNaN(targetDate.getTime())) {
+        console.warn(`Invalid date: ${dateStr}`);
+        return items;
+    }
+
+    return items.filter(item => {
+        const itemDate = new Date(item[timeField] || '');
+        if (isNaN(itemDate.getTime())) {
+            return false;
+        }
+
+        if (mode === 'within') {
+            // Files modified/accessed between targetDate and now
+            return itemDate >= targetDate && itemDate <= now;
+        } else {
+            // Files modified/accessed before targetDate (over X time ago)
+            return itemDate < targetDate;
+        }
     });
 }
 
@@ -285,14 +355,14 @@ function sortItems(
     let startCol = 0;
     let maxRow = iconsPerCol;
     let maxCol = 100; // Default max columns
-    
+
     if (region) {
         // Calculate grid positions within the region
         startCol = Math.floor((region.x - GRID_START_X) / GRID_WIDTH);
         startRow = Math.floor((region.y - GRID_START_Y) / GRID_HEIGHT);
         const endCol = Math.floor((region.x + region.width - GRID_START_X) / GRID_WIDTH);
         const endRow = Math.floor((region.y + region.height - GRID_START_Y) / GRID_HEIGHT);
-        
+
         // Ensure we don't go negative
         startCol = Math.max(0, startCol);
         startRow = Math.max(0, startRow);
@@ -306,7 +376,7 @@ function sortItems(
     function findNextAvailablePosition(): { row: number; col: number } | null {
         let attempts = 0;
         const maxAttempts = region ? (maxRow - startRow) * (maxCol - startCol) : 1000;
-        
+
         while (attempts < maxAttempts) {
             const x = GRID_START_X + currentCol * GRID_WIDTH;
             const y = GRID_START_Y + currentRow * GRID_HEIGHT;
@@ -317,7 +387,7 @@ function sortItems(
                 // Check if the entire icon (100x110px) fits within the region
                 const iconRight = x + GRID_WIDTH;
                 const iconBottom = y + GRID_HEIGHT;
-                
+
                 if (x < region.x || iconRight > region.x + region.width ||
                     y < region.y || iconBottom > region.y + region.height) {
                     // Position is outside region, skip it
@@ -355,7 +425,7 @@ function sortItems(
             }
             attempts++;
         }
-        
+
         // If region specified and we've exhausted all attempts, return null
         // Don't fallback to entire grid - we want to keep files within the region
         return null;
@@ -367,7 +437,7 @@ function sortItems(
             // If no position found, keep original position
             return item;
         }
-        
+
         const { row, col } = position;
         const x = GRID_START_X + col * GRID_WIDTH;
         const y = GRID_START_Y + row * GRID_HEIGHT;
@@ -377,7 +447,7 @@ function sortItems(
         // Move to next position for next item
         currentRow = row;
         currentCol = col;
-        
+
         // Move down first (vertical-first layout like Windows)
         currentRow++;
         if (region) {
@@ -430,7 +500,7 @@ function sortItems(
  * @param region - Optional region to limit search within (x, y, width, height)
  */
 function findFirstAvailablePosition(
-    allItems: DesktopItem[], 
+    allItems: DesktopItem[],
     region?: { x: number; y: number; width: number; height: number } | null
 ): { x: number; y: number } {
     const iconsPerCol = 8;   // Maximum rows per column
@@ -452,7 +522,7 @@ function findFirstAvailablePosition(
             for (let row = Math.max(0, startRow); row <= endRow; row++) {
                 const x = GRID_START_X + col * GRID_WIDTH;
                 const y = GRID_START_Y + row * GRID_HEIGHT;
-                
+
                 // Check if position is within region bounds
                 if (x >= region.x && x <= region.x + region.width &&
                     y >= region.y && y <= region.y + region.height) {

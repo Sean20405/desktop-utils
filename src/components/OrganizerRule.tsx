@@ -31,6 +31,13 @@ function HierarchyList({
     const [editingValue, setEditingValue] = useState<string>("");
     const [newFolderName, setNewFolderName] = useState<string>("");
 
+    // State for F-string input
+    const [fstringPattern, setFstringPattern] = useState<string>("");
+
+    // State for Time input
+    const [timeMode, setTimeMode] = useState<'within' | 'over'>('within');
+    const [timeDate, setTimeDate] = useState<string>("");
+
     const toggleExpand = (nodeKey: string) => {
         setExpandedNodes(prev => {
             const next = new Set(prev);
@@ -85,32 +92,124 @@ function HierarchyList({
 
                 // Skip rendering the special __INPUT__ marker as a regular item
                 if (isInputNode) {
-                    return (
-                        <div key={nodeKey} className="pt-2 border-t border-gray-200" style={{ paddingLeft: level ? 6 : 0 }}>
-                            <div className="flex items-center gap-2">
-                                <input
-                                    type="text"
-                                    placeholder="新資料夾名稱..."
-                                    value={newFolderName}
-                                    onChange={(e) => setNewFolderName(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            handleAddNewFolder();
-                                        }
-                                    }}
-                                    className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    onClick={(e) => e.stopPropagation()}
-                                />
-                                <button
-                                    onClick={handleAddNewFolder}
-                                    className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 active:scale-95 transition-all"
-                                    type="button"
-                                >
-                                    +
-                                </button>
+                    // Determine input type based on path
+                    const isFolderInput = path === "Put in folder";
+                    const isFStringInput = path === "F-string";
+                    const isTimeInput = path?.startsWith("Time >");
+
+                    if (isFolderInput) {
+                        // Folder name input (existing functionality)
+                        return (
+                            <div key={nodeKey} className="pt-2 border-t border-gray-200" style={{ paddingLeft: level ? 6 : 0 }}>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="新資料夾名稱..."
+                                        value={newFolderName}
+                                        onChange={(e) => setNewFolderName(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                handleAddNewFolder();
+                                            }
+                                        }}
+                                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <button
+                                        onClick={handleAddNewFolder}
+                                        className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 active:scale-95 transition-all"
+                                        type="button"
+                                    >
+                                        +
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    );
+                        );
+                    } else if (isFStringInput) {
+                        // F-string pattern input with add button
+                        return (
+                            <div key={nodeKey} className="pt-2" style={{ paddingLeft: level ? 6 : 0 }}>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="e.g., *.txt"
+                                        value={fstringPattern}
+                                        onChange={(e) => setFstringPattern(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && fstringPattern.trim()) {
+                                                onSelect(`F-string: ${fstringPattern.trim()}`);
+                                                setFstringPattern("");
+                                            }
+                                        }}
+                                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            if (fstringPattern.trim()) {
+                                                onSelect(`F-string: ${fstringPattern.trim()}`);
+                                                setFstringPattern("");
+                                            }
+                                        }}
+                                        className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 active:scale-95 transition-all"
+                                        type="button"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    } else if (isTimeInput) {
+                        // Time input with within/over selector and date picker
+                        // Extract time type from path (e.g., "Time > Last Accessed" -> "Last Accessed")
+                        const timeType = path?.replace("Time > ", "") || "";
+
+                        return (
+                            <div key={nodeKey} className="pt-2" style={{ paddingLeft: level ? 6 : 0 }}>
+                                <div className="flex flex-col gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <select
+                                            value={timeMode}
+                                            onChange={(e) => setTimeMode(e.target.value as 'within' | 'over')}
+                                            className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            <option value="within">within</option>
+                                            <option value="over">over</option>
+                                        </select>
+                                        <input
+                                            type="date"
+                                            value={timeDate}
+                                            onChange={(e) => setTimeDate(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && timeDate) {
+                                                    onSelect(`Time > ${timeType} ${timeMode} ${timeDate}`);
+                                                    setTimeDate("");
+                                                }
+                                            }}
+                                            className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            onClick={(e) => e.stopPropagation()}
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                if (timeDate) {
+                                                    onSelect(`Time > ${timeType} ${timeMode} ${timeDate}`);
+                                                    setTimeDate("");
+                                                }
+                                            }}
+                                            className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 active:scale-95 transition-all"
+                                            type="button"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    }
+
+                    // Default: no special input
+                    return null;
                 }
 
                 return (
@@ -510,7 +609,7 @@ function SavedRuleItem({
     onDelete: () => void;
     menuRef: React.RefObject<HTMLDivElement | null>;
 }) {
-// 判斷是否為群組
+    // 判斷是否為群組
     const isGroup = rule.rules && rule.rules.length > 0;
     const ruleCount = isGroup ? rule.rules!.length : 1;
     const hasRegion = !!rule.selectedRegion;
