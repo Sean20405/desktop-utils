@@ -353,7 +353,20 @@ function HierarchyList({
                                             if (canEdit) {
                                                 startEditing(nodeKey, node.label, e);
                                             } else {
-                                                onSelect(currentValue);
+                                                // Fix selection format for F-string and Time filters
+                                                let selectionValue = currentValue;
+
+                                                // Fix F-string format: "F-string > pattern" -> "F-string: pattern"
+                                                if (path === "F-string") {
+                                                    selectionValue = `F-string: ${node.label}`;
+                                                }
+                                                // Fix Time format: "Time > Field > condition" -> "Time > Field condition"
+                                                else if (path?.startsWith("Time > ")) {
+                                                    const timeField = path.replace("Time > ", "");
+                                                    selectionValue = `Time > ${timeField} ${node.label}`;
+                                                }
+
+                                                onSelect(selectionValue);
                                             }
                                         }}
                                         className={`text-sm ${level === 0 ? "text-gray-900 font-semibold" : "text-gray-800"} leading-6 whitespace-normal break-words ${canEdit ? 'cursor-text hover:text-blue-600' : 'cursor-pointer'} flex-1`}

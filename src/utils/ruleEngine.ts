@@ -32,40 +32,37 @@ export interface RuleParams {
 export function executeRule(
     subject: string,
     action: string,
-    context: RuleContext,
-    params?: RuleParams
+    context: RuleContext
 ): RuleExecutionResult | null {
-    const { items, tags } = context;
-
     // Step 1: Filter items based on subject
-    let filteredItems = filterItemsBySubject(subject, items, tags, params);
+    let filteredItems = filterItemsBySubject(subject, context.items, context.tags);
 
     // Step 2: Execute action on filtered items
     // Support both flat format ("Sort by name") and hierarchical format ("Sort > Sort by name")
     if (action === "Sort by name" || action === "Sort > Sort by name") {
-        return sortItems(filteredItems, items, 'name', context.selectedRegion);
+        return sortItems(filteredItems, context.items, 'name', context.selectedRegion);
     }
 
-    if (action === "Sort by last accessed time" || action === "Sort > Sort by last accessed time") {
-        return sortItems(filteredItems, items, 'lastAccessed', context.selectedRegion);
+    if (action === "Sort by time" || action === "Sort > Sort by time") {
+        return sortItems(filteredItems, context.items, 'lastModified', context.selectedRegion);
     }
 
-    if (action === "Sort by last modified time" || action === "Sort > Sort by last modified time") {
-        return sortItems(filteredItems, items, 'lastModified', context.selectedRegion);
+    if (action === "Sort by size" || action === "Sort > Sort by size") {
+        return sortItems(filteredItems, context.items, 'fileSize', context.selectedRegion);
     }
 
     if (action === "Sort by type" || action === "Sort > Sort by type") {
-        return sortItems(filteredItems, items, 'type', context.selectedRegion);
+        return sortItems(filteredItems, context.items, 'type', context.selectedRegion);
     }
 
-    if (action === "Sort by file size" || action === "Sort > Sort by file size") {
-        return sortItems(filteredItems, items, 'fileSize', context.selectedRegion);
+    if (action === "Sort by last accessed" || action === "Sort > Sort by last accessed") {
+        return sortItems(filteredItems, context.items, 'lastAccessed', context.selectedRegion);
     }
 
     // Handle "Put in folder" action
     if (action.startsWith('Put in "') && action.endsWith('" folder')) {
         const folderName = action.slice(8, -8);
-        return putInFolder(filteredItems, items, folderName, context.selectedRegion);
+        return putInFolder(filteredItems, context.items, folderName, context.selectedRegion);
     }
 
     // Handle "Delete" action
@@ -76,7 +73,7 @@ export function executeRule(
     // Handle "Zip" action - similar to Put in folder
     if (action.startsWith('Zip in "') && action.endsWith('" folder')) {
         const folderName = action.slice(8, -8);
-        return zipItems(filteredItems, items, folderName, context.selectedRegion);
+        return zipItems(filteredItems, context.items, folderName, context.selectedRegion);
     }
 
     return null;
@@ -88,8 +85,7 @@ export function executeRule(
 function filterItemsBySubject(
     subject: string,
     items: DesktopItem[],
-    tags?: TagItem[],
-    params?: RuleParams
+    tags?: TagItem[]
 ): DesktopItem[] {
     // Handle "All files"
     if (subject === "All files") {
@@ -114,28 +110,27 @@ function filterItemsBySubject(
         return filterByPattern(items, pattern);
     }
 
-    // Handle "Time > ..." (new format with within/over and date)
+    // Handle "Time > ..." (supports duration and date formats)
     if (subject.startsWith("Time > ")) {
         // Parse the time filter from the subject string
-        // Format: "Time > [timeField] [within|over] [date]"
-        // Example: "Time > Last Accessed within 2024-12-10"
+        // Format: "Time > [timeField] [mode] [value]"
+        // Examples: 
+        //   "Time > Last Accessed within 1 week"
+        //   "Time > Last Modified before 2024-12-10"
         const timeStr = subject.replace("Time > ", "");
         const parts = timeStr.split(" ");
 
         if (parts.length >= 3) {
-            // Extract time field (could be multi-word like "Last Accessed")
-            let timeField: 'lastAccessed' | 'lastModified' | 'createdTime' | undefined;
-            let mode: 'within' | 'over' | undefined;
-            let dateStr: string | undefined;
+            // Find the mode keyword
+            const modeIndex = parts.findIndex(p => ['within', 'over', 'before', 'after'].includes(p));
 
-            // Find the mode keyword (within or over)
-            const modeIndex = parts.findIndex(p => p === 'within' || p === 'over');
             if (modeIndex !== -1) {
-                mode = parts[modeIndex] as 'within' | 'over';
-                dateStr = parts.slice(modeIndex + 1).join(" ");
-
-                // Determine time field from the words before mode
+                const mode = parts[modeIndex] as 'within' | 'over' | 'before' | 'after';
+                const value = parts.slice(modeIndex + 1).join(" ");
                 const fieldName = parts.slice(0, modeIndex).join(" ");
+
+                // Map field name to property
+                let timeField: 'lastAccessed' | 'lastModified' | 'createdTime' | undefined;
                 if (fieldName === "Last Accessed") {
                     timeField = 'lastAccessed';
                 } else if (fieldName === "Create Time") {
@@ -144,16 +139,26 @@ function filterItemsBySubject(
                     timeField = 'lastModified';
                 }
 
-                if (timeField && mode && dateStr) {
-                    return filterByTimeDate(items, timeField, mode, dateStr);
+                if (timeField && value) {
+                    // Determine if value is a duration or a date
+                    const isDate = /^\d{4}-\d{2}-\d{2}$/.test(value);
+
+                    if (mode === 'before' || mode === 'after') {
+                        // before/after always use date
+                        return filterByTimeDate(items, timeField, mode, value);
+                    } else if (isDate) {
+                        // within/over with date
+                        return filterByTimeDate(items, timeField, mode, value);
+                    } else {
+                        // within/over with duration (e.g., "1 week")
+                        return filterByTimeDuration(items, timeField, mode, value);
+                    }
                 }
             }
         }
 
-        // Fallback: check if params are provided (backward compatibility)
-        if (params?.timeField && params?.timeValue && params?.timeUnit) {
-            return filterByTime(items, params.timeField, params.timeValue, params.timeUnit);
-        }
+        // If parsing failed, return all items
+        console.warn(`[filterItemsBySubject] Failed to parse Time filter: ${subject}`);
     }
 
     return items;
@@ -210,52 +215,88 @@ function filterByTag(items: DesktopItem[], tagName: string, tags: TagItem[]): De
  * Filter items by pattern matching (supports * and ?)
  */
 function filterByPattern(items: DesktopItem[], pattern: string): DesktopItem[] {
-    // Convert pattern to regex
+    // Convert glob pattern to regex
     const regexPattern = pattern
-        .replace(/\./g, '\\.')  // Escape dots
+        .replace(/\./g, '\\.')  // Escape dots first
         .replace(/\*/g, '.*')   // * becomes .*
         .replace(/\?/g, '.');   // ? becomes .
 
     const regex = new RegExp(`^${regexPattern}$`, 'i'); // Case insensitive
 
-    return items.filter(item => regex.test(item.label));
-}
-
-/**
- * Filter items by time
- */
-function filterByTime(
-    items: DesktopItem[],
-    timeField: 'lastAccessed' | 'lastModified' | 'createdTime',
-    value: number,
-    unit: 'day' | 'month' | 'year'
-): DesktopItem[] {
-    const now = new Date();
-    const threshold = calculateThreshold(now, value, unit);
-
     return items.filter(item => {
-        const itemDate = new Date(item[timeField] || '');
-        return itemDate >= threshold;
+        // Extract filename from path or use label
+        let fileName: string;
+
+        if (item.path) {
+            // Extract filename from full path
+            // e.g., "C:\\Users\\Sean\\Desktop\\專案報告.txt" -> "專案報告.txt"
+            const pathParts = item.path.split(/[/\\]/);
+            fileName = pathParts[pathParts.length - 1];
+        } else {
+            // Use label if no path
+            fileName = item.label;
+        }
+
+        // Test against the filename
+        const matches = regex.test(fileName);
+        console.log(`[filterByPattern] Pattern: ${pattern}, FileName: ${fileName}, Matches: ${matches}`);
+        return matches;
     });
 }
 
 /**
- * Filter items by time using date string and within/over mode
+ * Calculate the threshold date based on duration string
+ * @param now Current date/time
+ * @param durationStr Duration string like "1 week", "3 months", "1 year"
+ * @returns Date object representing the threshold
  */
-function filterByTimeDate(
+function calculateDurationThreshold(now: Date, durationStr: string): Date {
+    const parts = durationStr.trim().split(' ');
+    const value = parseInt(parts[0]);
+    const unit = parts[1]?.toLowerCase(); // 'day', 'week', 'month', 'year'
+
+    if (isNaN(value) || !unit) {
+        console.warn(`[calculateDurationThreshold] Invalid duration: ${durationStr}`);
+        return now;
+    }
+
+    const threshold = new Date(now);
+
+    switch (unit) {
+        case 'day':
+        case 'days':
+            threshold.setDate(threshold.getDate() - value);
+            break;
+        case 'week':
+        case 'weeks':
+            threshold.setDate(threshold.getDate() - (value * 7));
+            break;
+        case 'month':
+        case 'months':
+            threshold.setMonth(threshold.getMonth() - value);
+            break;
+        case 'year':
+        case 'years':
+            threshold.setFullYear(threshold.getFullYear() - value);
+            break;
+        default:
+            console.warn(`[calculateDurationThreshold] Unknown unit: ${unit}`);
+    }
+
+    return threshold;
+}
+
+/**
+ * Filter items by time duration (e.g., "within 1 week", "over 3 months")
+ */
+function filterByTimeDuration(
     items: DesktopItem[],
     timeField: 'lastAccessed' | 'lastModified' | 'createdTime',
     mode: 'within' | 'over',
-    dateStr: string
+    durationStr: string
 ): DesktopItem[] {
-    const targetDate = new Date(dateStr);
     const now = new Date();
-
-    // Validate date
-    if (isNaN(targetDate.getTime())) {
-        console.warn(`Invalid date: ${dateStr}`);
-        return items;
-    }
+    const threshold = calculateDurationThreshold(now, durationStr);
 
     return items.filter(item => {
         const itemDate = new Date(item[timeField] || '');
@@ -264,34 +305,71 @@ function filterByTimeDate(
         }
 
         if (mode === 'within') {
-            // Files modified/accessed between targetDate and now
-            return itemDate >= targetDate && itemDate <= now;
+            // Files within the duration (itemDate >= threshold && itemDate <= now)
+            return itemDate >= threshold && itemDate <= now;
         } else {
-            // Files modified/accessed before targetDate (over X time ago)
-            return itemDate < targetDate;
+            // Files over the duration (itemDate < threshold)
+            return itemDate < threshold;
         }
     });
 }
 
 /**
- * Calculate threshold date for time filtering
+ * Filter items by time using date string and within/over/before/after mode
  */
-function calculateThreshold(now: Date, value: number, unit: 'day' | 'month' | 'year'): Date {
-    const threshold = new Date(now);
+function filterByTimeDate(
+    items: DesktopItem[],
+    timeField: 'lastAccessed' | 'lastModified' | 'createdTime',
+    mode: 'within' | 'over' | 'before' | 'after',
+    dateStr: string
+): DesktopItem[] {
+    const targetDate = new Date(dateStr);
+    const now = new Date();
 
-    switch (unit) {
-        case 'day':
-            threshold.setDate(threshold.getDate() - value);
-            break;
-        case 'month':
-            threshold.setMonth(threshold.getMonth() - value);
-            break;
-        case 'year':
-            threshold.setFullYear(threshold.getFullYear() - value);
-            break;
+    console.log(`[filterByTimeDate] Mode: ${mode}, Date: ${dateStr}, Field: ${timeField}`);
+    console.log(`[filterByTimeDate] TargetDate: ${targetDate.toISOString()}, Now: ${now.toISOString()}`);
+
+    // Validate date
+    if (isNaN(targetDate.getTime())) {
+        console.warn(`[filterByTimeDate] Invalid date: ${dateStr}`);
+        return items;
     }
 
-    return threshold;
+    const filtered = items.filter(item => {
+        const itemDate = new Date(item[timeField] || '');
+        if (isNaN(itemDate.getTime())) {
+            return false;
+        }
+
+        let result = false;
+        switch (mode) {
+            case 'within':
+                // Files modified/accessed between targetDate and now
+                result = itemDate >= targetDate && itemDate <= now;
+                break;
+            case 'over':
+                // Files modified/accessed before targetDate (over X time ago)
+                result = itemDate < targetDate;
+                break;
+            case 'before':
+                // Files modified/accessed before targetDate
+                result = itemDate < targetDate;
+                break;
+            case 'after':
+                // Files modified/accessed after targetDate
+                result = itemDate > targetDate;
+                break;
+        }
+
+        if (result) {
+            console.log(`[filterByTimeDate] ✓ ${item.label}: ${itemDate.toISOString()} ${mode} ${targetDate.toISOString()}`);
+        }
+
+        return result;
+    });
+
+    console.log(`[filterByTimeDate] Filtered ${filtered.length} out of ${items.length} items`);
+    return filtered;
 }
 
 /**
