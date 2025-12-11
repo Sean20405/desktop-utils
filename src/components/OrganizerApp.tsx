@@ -291,6 +291,32 @@ export function OrganizerApp({
     }
     return [];
   });
+
+  // Load F-string patterns from localStorage
+  const [fstringPatterns, setFstringPatterns] = useState<string[]>(() => {
+    const saved = localStorage.getItem('organizerFstringPatterns');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse saved F-string patterns:', e);
+      }
+    }
+    return [];
+  });
+
+  // Load Time conditions from localStorage
+  const [timeConditions, setTimeConditions] = useState<string[]>(() => {
+    const saved = localStorage.getItem('organizerTimeConditions');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Failed to parse saved Time conditions:', e);
+      }
+    }
+    return [];
+  });
   // History is now managed from parent (App.tsx), no need for local state
   // Load tags from localStorage or start with empty array
   // const [tags, setTags] = useState<{ id: string; name: string; color: string; items: string[]; expanded: boolean }[]>(() => {
@@ -365,6 +391,16 @@ export function OrganizerApp({
   useEffect(() => {
     localStorage.setItem('organizerFolders', JSON.stringify(folders));
   }, [folders]);
+
+  // Save F-string patterns to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('organizerFstringPatterns', JSON.stringify(fstringPatterns));
+  }, [fstringPatterns]);
+
+  // Save Time conditions to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('organizerTimeConditions', JSON.stringify(timeConditions));
+  }, [timeConditions]);
 
   const handleRollback = (id: string) => {
     const entry = historyItems.find((item) => item.id === id);
@@ -558,6 +594,32 @@ export function OrganizerApp({
 
   const handleDeleteFolder = (folderName: string) => {
     setFolders((prev) => prev.filter(f => f !== folderName));
+  };
+
+  const handleAddFstringPattern = (pattern: string) => {
+    if (!pattern.trim()) return;
+    const trimmedPattern = pattern.trim();
+    if (fstringPatterns.includes(trimmedPattern)) {
+      return; // Silently ignore duplicates
+    }
+    setFstringPatterns((prev) => [...prev, trimmedPattern]);
+  };
+
+  const handleDeleteFstringPattern = (pattern: string) => {
+    setFstringPatterns((prev) => prev.filter(p => p !== pattern));
+  };
+
+  const handleAddTimeCondition = (condition: string) => {
+    if (!condition.trim()) return;
+    const trimmedCondition = condition.trim();
+    if (timeConditions.includes(trimmedCondition)) {
+      return; // Silently ignore duplicates
+    }
+    setTimeConditions((prev) => [...prev, trimmedCondition]);
+  };
+
+  const handleDeleteTimeCondition = (condition: string) => {
+    setTimeConditions((prev) => prev.filter(c => c !== condition));
   };
 
   // Handle Preview
@@ -1098,8 +1160,8 @@ export function OrganizerApp({
 
   // Generate dynamic subject options based on actual tags and file types
   const dynamicSubjectOptions = useMemo(() => {
-    return getSubjectOptionsWithTags(tags, items);
-  }, [tags, items]);
+    return getSubjectOptionsWithTags(tags, items, fstringPatterns, timeConditions);
+  }, [tags, items, fstringPatterns, timeConditions]);
 
   // Generate dynamic action options based on user folders
   const dynamicActionOptions = useMemo(() => {
@@ -1122,6 +1184,10 @@ export function OrganizerApp({
       onRenameFolder={handleRenameFolder}
       onAddFolder={handleAddFolder}
       onDeleteFolder={handleDeleteFolder}
+      onAddFstringPattern={handleAddFstringPattern}
+      onDeleteFstringPattern={handleDeleteFstringPattern}
+      onAddTimeCondition={handleAddTimeCondition}
+      onDeleteTimeCondition={handleDeleteTimeCondition}
       onAddRule={handleAddRule}
       onSaveRule={handleSaveRule}
       onEditRule={handleEditRule}

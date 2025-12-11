@@ -15,6 +15,10 @@ function HierarchyList({
     isEditableFolder,
     onAddFolder,
     onDeleteFolder,
+    onAddFstringPattern,
+    onDeleteFstringPattern,
+    onAddTimeCondition,
+    onDeleteTimeCondition,
     level = 0,
 }: {
     nodes: HierarchyNode[];
@@ -24,6 +28,10 @@ function HierarchyList({
     isEditableFolder?: (path: string, label: string) => boolean;
     onAddFolder?: (folderName: string) => void;
     onDeleteFolder?: (folderName: string) => void;
+    onAddFstringPattern?: (pattern: string) => void;
+    onDeleteFstringPattern?: (pattern: string) => void;
+    onAddTimeCondition?: (condition: string) => void;
+    onDeleteTimeCondition?: (condition: string) => void;
     level?: number;
 }) {
     const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
@@ -34,8 +42,9 @@ function HierarchyList({
     // State for F-string input
     const [fstringPattern, setFstringPattern] = useState<string>("");
 
-    // State for Time input
-    const [timeMode, setTimeMode] = useState<'within' | 'over'>('within');
+    // State for Time input (4 modes: within/over/before/after)
+    const [timeMode, setTimeMode] = useState<'within' | 'over' | 'before' | 'after'>('within');
+    const [timeDuration, setTimeDuration] = useState<string>("1 week");
     const [timeDate, setTimeDate] = useState<string>("");
 
     const toggleExpand = (nodeKey: string) => {
@@ -126,9 +135,9 @@ function HierarchyList({
                             </div>
                         );
                     } else if (isFStringInput) {
-                        // F-string pattern input with add button
+                        // F-string pattern input with separator line and add button
                         return (
-                            <div key={nodeKey} className="pt-2" style={{ paddingLeft: level ? 6 : 0 }}>
+                            <div key={nodeKey} className="pt-2 border-t border-gray-200" style={{ paddingLeft: level ? 6 : 0 }}>
                                 <div className="flex items-center gap-2">
                                     <input
                                         type="text"
@@ -137,7 +146,9 @@ function HierarchyList({
                                         onChange={(e) => setFstringPattern(e.target.value)}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' && fstringPattern.trim()) {
-                                                onSelect(`F-string: ${fstringPattern.trim()}`);
+                                                const trimmed = fstringPattern.trim();
+                                                onSelect(`F-string: ${trimmed}`);
+                                                onAddFstringPattern?.(trimmed);
                                                 setFstringPattern("");
                                             }
                                         }}
@@ -147,7 +158,9 @@ function HierarchyList({
                                     <button
                                         onClick={() => {
                                             if (fstringPattern.trim()) {
-                                                onSelect(`F-string: ${fstringPattern.trim()}`);
+                                                const trimmed = fstringPattern.trim();
+                                                onSelect(`F-string: ${trimmed}`);
+                                                onAddFstringPattern?.(trimmed);
                                                 setFstringPattern("");
                                             }
                                         }}
@@ -160,49 +173,87 @@ function HierarchyList({
                             </div>
                         );
                     } else if (isTimeInput) {
-                        // Time input with within/over selector and date picker
+                        // Time input with 4 modes: within/over (duration) and before/after (date)
                         // Extract time type from path (e.g., "Time > Last Accessed" -> "Last Accessed")
                         const timeType = path?.replace("Time > ", "") || "";
+                        const isDurationMode = timeMode === 'within' || timeMode === 'over';
 
                         return (
-                            <div key={nodeKey} className="pt-2" style={{ paddingLeft: level ? 6 : 0 }}>
-                                <div className="flex flex-col gap-2">
-                                    <div className="flex items-center gap-2">
+                            <div key={nodeKey} className="pt-2 border-t border-gray-200" style={{ paddingLeft: level ? 6 : 0 }}>
+                                <div className="flex items-center gap-2">
+                                    {/* Mode selector */}
+                                    <select
+                                        value={timeMode}
+                                        onChange={(e) => setTimeMode(e.target.value as 'within' | 'over' | 'before' | 'after')}
+                                        className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        onClick={(e) => e.stopPropagation()}
+                                    >
+                                        <option value="within">within</option>
+                                        <option value="over">over</option>
+                                        <option value="before">before</option>
+                                        <option value="after">after</option>
+                                    </select>
+
+                                    {/* Duration selector or date picker based on mode */}
+                                    {isDurationMode ? (
                                         <select
-                                            value={timeMode}
-                                            onChange={(e) => setTimeMode(e.target.value as 'within' | 'over')}
-                                            className="px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            value={timeDuration}
+                                            onChange={(e) => setTimeDuration(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    const condition = `${timeType}:${timeMode} ${timeDuration}`;
+                                                    onSelect(`Time > ${timeType} ${timeMode} ${timeDuration}`);
+                                                    onAddTimeCondition?.(condition);
+                                                }
+                                            }}
+                                            className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             onClick={(e) => e.stopPropagation()}
                                         >
-                                            <option value="within">within</option>
-                                            <option value="over">over</option>
+                                            <option value="1 day">1 day</option>
+                                            <option value="1 week">1 week</option>
+                                            <option value="1 month">1 month</option>
+                                            <option value="3 months">3 months</option>
+                                            <option value="6 months">6 months</option>
+                                            <option value="1 year">1 year</option>
                                         </select>
+                                    ) : (
                                         <input
                                             type="date"
                                             value={timeDate}
                                             onChange={(e) => setTimeDate(e.target.value)}
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' && timeDate) {
+                                                    const condition = `${timeType}:${timeMode} ${timeDate}`;
                                                     onSelect(`Time > ${timeType} ${timeMode} ${timeDate}`);
+                                                    onAddTimeCondition?.(condition);
                                                     setTimeDate("");
                                                 }
                                             }}
                                             className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             onClick={(e) => e.stopPropagation()}
                                         />
-                                        <button
-                                            onClick={() => {
-                                                if (timeDate) {
-                                                    onSelect(`Time > ${timeType} ${timeMode} ${timeDate}`);
-                                                    setTimeDate("");
-                                                }
-                                            }}
-                                            className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 active:scale-95 transition-all"
-                                            type="button"
-                                        >
-                                            +
-                                        </button>
-                                    </div>
+                                    )}
+
+                                    {/* Add button */}
+                                    <button
+                                        onClick={() => {
+                                            let condition: string;
+                                            if (isDurationMode) {
+                                                condition = `${timeType}:${timeMode} ${timeDuration}`;
+                                                onSelect(`Time > ${timeType} ${timeMode} ${timeDuration}`);
+                                                onAddTimeCondition?.(condition);
+                                            } else if (timeDate) {
+                                                condition = `${timeType}:${timeMode} ${timeDate}`;
+                                                onSelect(`Time > ${timeType} ${timeMode} ${timeDate}`);
+                                                onAddTimeCondition?.(condition);
+                                                setTimeDate("");
+                                            }
+                                        }}
+                                        className="px-3 py-1 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 active:scale-95 transition-all"
+                                        type="button"
+                                    >
+                                        +
+                                    </button>
                                 </div>
                             </div>
                         );
@@ -281,6 +332,33 @@ function HierarchyList({
                                             <X size={14} />
                                         </button>
                                     )}
+                                    {path === "F-string" && onDeleteFstringPattern && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                onDeleteFstringPattern(node.label);
+                                            }}
+                                            className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                                            title="刪除模式"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                    {path?.startsWith("Time >") && onDeleteTimeCondition && (
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                // Extract time type from path and reconstruct full condition
+                                                const timeType = path.replace("Time > ", "");
+                                                const fullCondition = `${timeType}:${node.label}`;
+                                                onDeleteTimeCondition(fullCondition);
+                                            }}
+                                            className="ml-2 p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                                            title="刪除條件"
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -294,6 +372,10 @@ function HierarchyList({
                                     isEditableFolder={isEditableFolder}
                                     onAddFolder={onAddFolder}
                                     onDeleteFolder={onDeleteFolder}
+                                    onAddFstringPattern={onAddFstringPattern}
+                                    onDeleteFstringPattern={onDeleteFstringPattern}
+                                    onAddTimeCondition={onAddTimeCondition}
+                                    onDeleteTimeCondition={onDeleteTimeCondition}
                                     level={level + 1}
                                 />
                             </div>
@@ -316,6 +398,10 @@ function HierarchicalDropdown({
     isEditableFolder,
     onAddFolder,
     onDeleteFolder,
+    onAddFstringPattern,
+    onDeleteFstringPattern,
+    onAddTimeCondition,
+    onDeleteTimeCondition,
     align = "left",
 }: {
     title: string;
@@ -327,6 +413,10 @@ function HierarchicalDropdown({
     isEditableFolder?: (path: string, label: string) => boolean;
     onAddFolder?: (folderName: string) => void;
     onDeleteFolder?: (folderName: string) => void;
+    onAddFstringPattern?: (pattern: string) => void;
+    onDeleteFstringPattern?: (pattern: string) => void;
+    onAddTimeCondition?: (condition: string) => void;
+    onDeleteTimeCondition?: (condition: string) => void;
     align?: "left" | "right";
 }) {
     const [open, setOpen] = useState(false);
@@ -369,6 +459,10 @@ function HierarchicalDropdown({
                             isEditableFolder={isEditableFolder}
                             onAddFolder={onAddFolder}
                             onDeleteFolder={onDeleteFolder}
+                            onAddFstringPattern={onAddFstringPattern}
+                            onDeleteFstringPattern={onDeleteFstringPattern}
+                            onAddTimeCondition={onAddTimeCondition}
+                            onDeleteTimeCondition={onDeleteTimeCondition}
                         />
                     </div>
                 </div>
@@ -460,6 +554,10 @@ type RulesPanelProps = {
     onRenameFolder?: (oldName: string, newName: string) => void;
     onAddFolder?: (folderName: string) => void;
     onDeleteFolder?: (folderName: string) => void;
+    onAddFstringPattern?: (pattern: string) => void;
+    onDeleteFstringPattern?: (pattern: string) => void;
+    onAddTimeCondition?: (condition: string) => void;
+    onDeleteTimeCondition?: (condition: string) => void;
     onAddRule: () => void;
     onSaveRule: () => void;
     onEditRule: (id: string) => void;
@@ -485,6 +583,10 @@ export function RulesPanel({
     onRenameFolder,
     onAddFolder,
     onDeleteFolder,
+    onAddFstringPattern,
+    onDeleteFstringPattern,
+    onAddTimeCondition,
+    onDeleteTimeCondition,
     onAddRule,
     onSaveRule,
     onEditRule,
@@ -510,6 +612,10 @@ export function RulesPanel({
                         selected={selectedSubject}
                         options={subjectOptions || defaultSubjectOptions}
                         onSelect={onSelectSubject}
+                        onAddFstringPattern={onAddFstringPattern}
+                        onDeleteFstringPattern={onDeleteFstringPattern}
+                        onAddTimeCondition={onAddTimeCondition}
+                        onDeleteTimeCondition={onDeleteTimeCondition}
                         align="left"
                     />
                     <HierarchicalDropdown

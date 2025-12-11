@@ -127,7 +127,9 @@ function extractFileExtensions(items: Array<{ label: string; type: string; path?
  */
 export function getSubjectOptionsWithTags(
     tags: Array<{ name: string }>,
-    items: Array<{ label: string; type: string; path?: string }>
+    items: Array<{ label: string; type: string; path?: string }>,
+    fstringPatterns: string[] = [],
+    timeConditions: string[] = []
 ): HierarchyNode[] {
     // Extract actual file extensions from desktop items
     const fileExtensions = extractFileExtensions(items);
@@ -159,18 +161,27 @@ export function getSubjectOptionsWithTags(
                 {
                     label: "Last Accessed",
                     children: [
+                        ...timeConditions
+                            .filter(tc => tc.startsWith("Last Accessed:"))
+                            .map(tc => ({ label: tc.replace("Last Accessed:", "").trim() })),
                         { label: "__INPUT__" },
                     ],
                 },
                 {
                     label: "Create Time",
                     children: [
+                        ...timeConditions
+                            .filter(tc => tc.startsWith("Create Time:"))
+                            .map(tc => ({ label: tc.replace("Create Time:", "").trim() })),
                         { label: "__INPUT__" },
                     ],
                 },
                 {
                     label: "Last Modified",
                     children: [
+                        ...timeConditions
+                            .filter(tc => tc.startsWith("Last Modified:"))
+                            .map(tc => ({ label: tc.replace("Last Modified:", "").trim() })),
                         { label: "__INPUT__" },
                     ],
                 },
@@ -183,6 +194,7 @@ export function getSubjectOptionsWithTags(
         {
             label: "F-string",
             children: [
+                ...fstringPatterns.map(pattern => ({ label: pattern })),
                 { label: "__INPUT__" },
             ],
         },
