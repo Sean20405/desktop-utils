@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { X, Monitor } from "lucide-react";
 import { useDesktop } from "../context/DesktopContext";
-import { DndContext, type DragEndEvent, useDraggable } from "@dnd-kit/core";
+import { DndContext, type DragEndEvent, type DragStartEvent, useDraggable } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { assignFilesToTags, generateAndAssignTags, hasGeminiApiKey, setGeminiApiKey } from "../utils/geminiApi";
@@ -22,17 +22,41 @@ function DraggablePreviewFile({
   item,
   scale,
   isSelected,
+  selectedItemIds,
+  allPreviewItems,
 }: {
   item: { id: string; label: string; x: number; y: number; imageUrl?: string };
   scale: number;
   isSelected?: boolean;
+  selectedItemIds?: Set<string>;
+  allPreviewItems?: { id: string; label: string }[];
 }) {
+  // 如果這個檔案被選中，且有多個選中的檔案，則拖動時包含所有選中的檔案
+  const isMultiSelect = isSelected && selectedItemIds && selectedItemIds.size > 1;
+  
+  // 計算選中的檔案列表 - 使用 useMemo 確保穩定性
+  const selectedFiles = useMemo(() => {
+    if (isMultiSelect && allPreviewItems && selectedItemIds) {
+      return allPreviewItems.filter(i => selectedItemIds.has(i.id)).map(i => i.label);
+    }
+    return [item.label];
+  }, [isMultiSelect, allPreviewItems, selectedItemIds, item.label, item.id]);
+
+  // 使用 useMemo 確保 data 對象在正確的時機更新
+  const dragData = useMemo(() => {
+    const data = {
+      fileName: item.label, // 保留單個檔案名以向後兼容
+      sourceTagId: null, // 來自 preview，不是來自任何 tag
+      isBatchDrag: isMultiSelect, // 標記這是批量拖動
+      selectedFiles: selectedFiles, // 所有選中的檔案名列表
+    };
+    
+    return data;
+  }, [item.id, item.label, isMultiSelect, selectedFiles, selectedItemIds?.size]);
+
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `preview-file-${item.id}`,
-    data: {
-      fileName: item.label,
-      sourceTagId: null, // 來自 preview，不是來自任何 tag
-    },
+    data: dragData,
   });
 
   const iconSrc = getAssetUrl(item.imageUrl);
@@ -211,6 +235,8 @@ function DesktopPreview({
             item={item}
             scale={scale}
             isSelected={selectedItemIds?.has(item.id)}
+            selectedItemIds={selectedItemIds}
+            allPreviewItems={previewItems}
           />
         ))}
         {displayRegion && (
@@ -377,6 +403,9 @@ export function OrganizerApp({
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [previewItems, setPreviewItems] = useState<DesktopItem[]>(items);
   const [selectedRegion, setSelectedRegion] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
+  
+  // 保存拖動開始時的 selectedItemIds 快照，避免拖動過程中 selectedRegion 被清除導致數據丟失
+  const dragStartSelectedItemIdsRef = useRef<Set<string> | null>(null);
 
   // Update preview items when desktop items change
   useEffect(() => {
@@ -701,10 +730,11 @@ export function OrganizerApp({
   };
 
   // 計算哪些檔案被框選到（用於高亮顯示）
+  // 注意：使用 previewItems 而不是 items，因為我們在 preview 模式下顯示的是 previewItems
   const selectedItemIds = useMemo(() => {
     if (!selectedRegion) return new Set<string>();
-    return new Set(filterItemsByRegion(items, selectedRegion).map(item => item.id));
-  }, [selectedRegion, items]);
+    return new Set(filterItemsByRegion(previewItems, selectedRegion).map(item => item.id));
+  }, [selectedRegion, previewItems]);
 
   const handlePreview = () => {
     // If already in preview mode, toggle off
@@ -926,29 +956,38 @@ export function OrganizerApp({
     setTags((prev) => prev.map((tag) => (tag.id === id ? { ...tag, color } : tag)));
   };
 
+  // 在拖動開始時保存 selectedItemIds 的快照
+  const handleTagDragStart = (event: DragStartEvent) => {
+    const { active } = event;
+    const activeId = active.id as string;
+    
+    // 如果是從 preview 拖動檔案，保存當前的 selectedItemIds
+    if (activeId.startsWith("preview-file-")) {
+      dragStartSelectedItemIdsRef.current = selectedItemIds ? new Set(selectedItemIds) : null;
+    }
+  };
+
   const handleTagDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (!over) return;
+    if (!over) {
+      // 拖動取消時清除快照
+      dragStartSelectedItemIdsRef.current = null;
+      return;
+    }
 
     const activeId = active.id as string;
     const overId = over.id as string;
-
-    // 調試：輸出拖放信息
-    console.log("Drag end:", { activeId, overId, activeData: active.data.current });
 
     // 檢查是否拖動的是檔案（從 tag 中的檔案或 preview 中的檔案）
     if (activeId.startsWith("file-") || activeId.startsWith("preview-file-")) {
       const activeData = active.data.current;
       if (!activeData) {
-        console.log("No active data");
         return;
       }
 
       const fileName = activeData.fileName as string;
       const sourceTagId = activeData.sourceTagId as string | null;
-
-      console.log("File drag:", { fileName, sourceTagId, overId });
 
       // 檢查是否拖放到 tag 上
       let targetTagId: string | null = null;
@@ -957,48 +996,62 @@ export function OrganizerApp({
       const overData = over.data.current;
       if (overData && overData.type === 'tag-drop-zone' && overData.tagId) {
         targetTagId = overData.tagId as string;
-        console.log("Found tag from over.data, targetTagId:", targetTagId);
       } else if (overId.startsWith("tag-drop-")) {
         targetTagId = overId.replace("tag-drop-", "");
-        console.log("Found tag-drop, targetTagId:", targetTagId);
       } else {
         // 檢查 overId 是否是某個 tag 的 id
         const targetTag = tags.find(tag => tag.id === overId);
         if (targetTag) {
           targetTagId = overId;
-          console.log("Found tag by id, targetTagId:", targetTagId);
-        } else {
-          console.log("No matching tag found for overId:", overId, "overData:", overData);
         }
       }
 
       if (targetTagId) {
-        console.log("Moving file:", { fileName, from: sourceTagId, to: targetTagId });
+        // 檢查是否是批量拖動
+        // 使用拖動開始時保存的 selectedItemIds 快照，避免拖動過程中 selectedRegion 被清除導致數據丟失
+        const snapshotSelectedItemIds = activeId.startsWith("preview-file-") 
+          ? dragStartSelectedItemIdsRef.current 
+          : null;
+        
+        const draggedItemId = activeId.replace("preview-file-", "");
+        const isDraggedItemSelected = snapshotSelectedItemIds?.has(draggedItemId) ?? false;
+        const hasMultipleSelections = snapshotSelectedItemIds && snapshotSelectedItemIds.size > 1;
+        const isBatchDrag = hasMultipleSelections && isDraggedItemSelected;
+        
+        // 如果是批量拖動，獲取所有選中的檔案；否則只拖動當前檔案
+        const selectedFiles = isBatchDrag && previewItems && snapshotSelectedItemIds
+          ? previewItems.filter(i => snapshotSelectedItemIds.has(i.id)).map(i => i.label)
+          : [fileName];
+        
+        const filesToMove = selectedFiles;
+        
+        // 拖動結束後清除快照
+        dragStartSelectedItemIdsRef.current = null;
+
         setTags((prevTags) => {
           return prevTags.map((tag) => {
             // 從源 tag 中移除檔案（如果有的話，且不是拖放到同一個 tag）
             if (sourceTagId && tag.id === sourceTagId && tag.id !== targetTagId) {
-              console.log("Removing from source tag:", tag.id);
               return {
                 ...tag,
-                items: tag.items.filter((item) => item !== fileName),
+                items: tag.items.filter((item) => !filesToMove.includes(item)),
               };
             }
 
-            // 添加到目標 tag（如果檔案不在該 tag 中）
-            if (tag.id === targetTagId && !tag.items.includes(fileName)) {
-              console.log("Adding to target tag:", tag.id);
-              return {
-                ...tag,
-                items: [...tag.items, fileName],
-              };
+            // 添加到目標 tag（只添加不在該 tag 中的檔案）
+            if (tag.id === targetTagId) {
+              const newItems = filesToMove.filter(file => !tag.items.includes(file));
+              if (newItems.length > 0) {
+                return {
+                  ...tag,
+                  items: [...tag.items, ...newItems],
+                };
+              }
             }
 
             return tag;
           });
         });
-      } else {
-        console.log("No target tag found");
       }
     } else {
       // 拖動的是 tag 本身，進行排序
@@ -1206,7 +1259,6 @@ export function OrganizerApp({
     } catch (error) {
       console.error('分配檔案時發生錯誤:', error);
       const errorMessage = error instanceof Error ? error.message : '未知錯誤';
-      console.log('errorMessage: ', errorMessage);
       alert(`分配檔案時發生錯誤：\n${errorMessage}\n\n請確認：\n1. .env 文件已正確設置\n`);
     } finally {
       setIsAssigningTags(false);
@@ -1272,7 +1324,7 @@ export function OrganizerApp({
   }, []);
 
   return (
-    <DndContext onDragEnd={handleTagDragEnd}>
+    <DndContext onDragStart={handleTagDragStart} onDragEnd={handleTagDragEnd}>
       <div className="h-full flex flex-col bg-[#d8d8d8] p-4 gap-4 text-gray-900">
         <div className="flex flex-1 gap-4 min-h-0">
           <div className="flex-4 flex flex-col min-w-[520px]">
