@@ -5,6 +5,7 @@ import { GRID_WIDTH, GRID_HEIGHT, GRID_START_X, GRID_START_Y } from '../constant
 export interface RuleExecutionResult {
     items: DesktopItem[];
     description: string;
+    groupLabels?: Array<{ label: string; x: number; y: number; width: number; color: string }>;
 }
 
 export interface RuleContext {
@@ -34,6 +35,8 @@ export function executeRule(
     action: string,
     context: RuleContext
 ): RuleExecutionResult | null {
+    console.log(`[executeRule] Subject: "${subject}", Action: "${action}"`);
+
     // Step 1: Filter items based on subject
     let filteredItems = filterItemsBySubject(subject, context.items, context.tags);
 
@@ -76,6 +79,15 @@ export function executeRule(
         return zipItems(filteredItems, context.items, folderName, context.selectedRegion);
     }
 
+    // Handle "Partition by Tag" action
+    console.log(`[executeRule] Checking partition: action === "Partition by Tag"? ${action === "Partition by Tag"}`);
+    console.log(`[executeRule] Checking partition: action === "Partition > Partition by Tag"? ${action === "Partition > Partition by Tag"}`);
+    if (action === "Partition by Tag" || action === "Partition > Partition by Tag") {
+        console.log(`[executeRule] ✅ MATCHED! Calling partitionItems with ${filteredItems.length} items, ${context.tags?.length || 0} tags`);
+        return partitionItems(filteredItems, context.items, context.tags || [], context.selectedRegion);
+    }
+
+    console.log(`[executeRule] ❌ No action matched for: "${action}"`);
     return null;
 }
 
@@ -798,6 +810,233 @@ function putInFolder(
     return {
         items: resultItems,
         description: `Put ${targetItems.length} file(s) into "${folderName}" folder`,
+    };
+}
+
+
+/**
+ * Partition items by tags into separate columns
+ */
+function partitionItems(
+    targetItems: DesktopItem[],
+    allItems: DesktopItem[],
+    tags: TagItem[],
+    region?: { x: number; y: number; width: number; height: number } | null
+): RuleExecutionResult {
+    console.log(`[partitionItems] Partitioning ${targetItems.length} items by tags`);
+
+    // Get non-target items (items that won't be moved)
+    const nonTargetItems = allItems.filter(
+        item => !targetItems.some(target => target.id === item.id)
+    );
+
+    // Create a map of item labels to their tag(s)
+    const itemTagMap = new Map<string, string[]>();
+    tags.forEach(tag => {
+        tag.items.forEach(itemLabel => {
+            if (!itemTagMap.has(itemLabel)) {
+                itemTagMap.set(itemLabel, []);
+            }
+            itemTagMap.get(itemLabel)!.push(tag.name);
+        });
+    });
+
+    // Group items by their first tag (in order of appearance)
+    const tagGroups = new Map<string, DesktopItem[]>();
+    const tagOrder: string[] = [];
+    const noTagItems: DesktopItem[] = [];
+
+    targetItems.forEach(item => {
+        const itemTags = itemTagMap.get(item.label);
+        if (itemTags && itemTags.length > 0) {
+            const firstTag = itemTags[0];
+            if (!tagGroups.has(firstTag)) {
+                tagGroups.set(firstTag, []);
+                tagOrder.push(firstTag);
+            }
+            tagGroups.get(firstTag)!.push(item);
+        } else {
+            noTagItems.push(item);
+        }
+    });
+
+    // If there are items without tags, add them as a separate group
+    if (noTagItems.length > 0) {
+        tagGroups.set('__NO_TAG__', noTagItems);
+        tagOrder.push('__NO_TAG__');
+    }
+
+    console.log(`[partitionItems] Found ${tagOrder.length} tag groups:`, tagOrder);
+
+    // Calculate grid layout parameters
+    const iconsPerCol = 8; // Maximum rows per column
+    let startRow = 0;
+    let startCol = 0;
+    let maxRow = iconsPerCol;
+    let maxCol = 100;
+
+    if (region) {
+        startCol = Math.floor((region.x - GRID_START_X) / GRID_WIDTH);
+        startRow = Math.floor((region.y - GRID_START_Y) / GRID_HEIGHT);
+        const endCol = Math.floor((region.x + region.width - GRID_START_X) / GRID_WIDTH);
+        const endRow = Math.floor((region.y + region.height - GRID_START_Y) / GRID_HEIGHT);
+
+        startCol = Math.max(0, startCol);
+        startRow = Math.max(0, startRow);
+        maxCol = endCol + 1;
+        maxRow = endRow + 1;
+    }
+
+    // Track occupied positions
+    const occupiedPositions = new Set(
+        nonTargetItems.map(item => `${item.x},${item.y}`)
+    );
+
+    let currentCol = startCol;
+    const arrangedItems: DesktopItem[] = [];
+    const unplacedItems: DesktopItem[] = []; // Track items that couldn't be placed
+    const groupLabels: Array<{ label: string; x: number; y: number; width: number; color: string }> = [];
+
+    // Process each tag group in order
+    tagOrder.forEach(tagName => {
+        const groupItems = tagGroups.get(tagName)!;
+        console.log(`[partitionItems] Processing tag "${tagName}" with ${groupItems.length} items`);
+
+        // Track the starting column for this tag group (for label positioning)
+        const groupStartCol = currentCol;
+        let currentRow = startRow;
+        let itemsPlaced = 0;
+
+        // Place all items in this tag group (may span multiple columns)
+        for (const item of groupItems) {
+            let placed = false;
+
+            // Try to find a position in current column
+            while (currentRow < maxRow && !placed) {
+                const x = GRID_START_X + currentCol * GRID_WIDTH;
+                const y = GRID_START_Y + currentRow * GRID_HEIGHT;
+                const posKey = `${x},${y}`;
+
+                // Check if position is within region (if specified)
+                if (region) {
+                    const iconRight = x + GRID_WIDTH;
+                    const iconBottom = y + GRID_HEIGHT;
+
+                    if (x < region.x || iconRight > region.x + region.width ||
+                        y < region.y || iconBottom > region.y + region.height) {
+                        currentRow++;
+                        continue;
+                    }
+                }
+
+                if (!occupiedPositions.has(posKey)) {
+                    // Place item here
+                    arrangedItems.push({
+                        ...item,
+                        x,
+                        y,
+                    });
+                    occupiedPositions.add(posKey);
+                    currentRow++;
+                    placed = true;
+                    itemsPlaced++;
+                }
+                else {
+                    currentRow++;
+                }
+            }
+
+            // If current column is full, move to next column for same tag group
+            if (!placed) {
+                currentCol++;
+                currentRow = startRow;
+
+                // Check if we've exceeded max columns
+                if (currentCol >= maxCol && region) {
+                    console.warn(`[partitionItems] Exceeded max columns in region, cannot place: ${item.label}`);
+                    unplacedItems.push(item);
+                    continue; // Skip this item
+                }
+
+                console.log(`[partitionItems] Tag "${tagName}" spilling to column ${currentCol}`);
+
+                // Try to place in new column
+                const x = GRID_START_X + currentCol * GRID_WIDTH;
+                const y = GRID_START_Y + currentRow * GRID_HEIGHT;
+                const posKey = `${x},${y}`;
+
+                // Check region bounds
+                if (region) {
+                    const iconRight = x + GRID_WIDTH;
+                    const iconBottom = y + GRID_HEIGHT;
+
+                    if (x < region.x || iconRight > region.x + region.width ||
+                        y < region.y || iconBottom > region.y + region.height) {
+                        console.warn(`[partitionItems] New column out of region bounds, cannot place: ${item.label}`);
+                        unplacedItems.push(item);
+                        continue;
+                    }
+                }
+
+                if (!occupiedPositions.has(posKey)) {
+                    arrangedItems.push({
+                        ...item,
+                        x,
+                        y,
+                    });
+                    occupiedPositions.add(posKey);
+                    currentRow++;
+                    itemsPlaced++;
+                } else {
+                    console.warn(`[partitionItems] Position occupied in new column, cannot place: ${item.label}`);
+                    unplacedItems.push(item);
+                }
+            }
+        }
+
+        // Add label for this group
+        // Label is positioned at the start column of this group
+        const groupEndCol = currentCol;
+        const labelX = GRID_START_X + groupStartCol * GRID_WIDTH;
+        const labelY = GRID_START_Y + maxRow * GRID_HEIGHT + 20; // 20px padding below grid
+
+        // Calculate label width based on columns spanned
+        const columnsSpanned = groupEndCol - groupStartCol + 1;
+        const labelWidth = columnsSpanned * GRID_WIDTH;
+
+        // Get tag color (default to gray if not found or no tag)
+        const tagColor = tagName === '__NO_TAG__'
+            ? '#6b7280'  // gray-500
+            : tags.find(t => t.name === tagName)?.color || '#6b7280';
+
+        groupLabels.push({
+            label: tagName === '__NO_TAG__' ? 'No Tag' : tagName,
+            x: labelX,
+            y: labelY,
+            width: labelWidth,
+            color: tagColor,
+        });
+
+        console.log(`[partitionItems] Tag "${tagName}" placed ${itemsPlaced}/${groupItems.length} items, spanning ${columnsSpanned} column(s) from ${groupStartCol} to ${groupEndCol}`);
+
+        // Move to next column for next tag group
+        currentCol++;
+
+        // Check if we've exceeded max columns
+        if (currentCol >= maxCol && region) {
+            console.warn(`[partitionItems] Exceeded max columns in region`);
+        }
+    });
+
+    // Combine arranged items + unplaced items (in original positions) + non-target items
+    const resultItems = [...arrangedItems, ...unplacedItems, ...nonTargetItems];
+
+    console.log(`[partitionItems] Result: ${resultItems.length} items, ${groupLabels.length} labels`);
+
+    return {
+        items: resultItems,
+        description: `Partitioned ${targetItems.length} items into ${tagOrder.length} tag group(s)`,
+        groupLabels,
     };
 }
 

@@ -787,7 +787,7 @@ export function RulesPanel({
                         : 'bg-white border-gray-400 hover:bg-gray-50'
                         }`}
                 >
-                    Preview
+                    {isPreviewMode ? 'Undo' : 'Preview'}
                 </button>
                 <button
                     onClick={onApply}

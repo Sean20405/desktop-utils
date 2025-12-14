@@ -33,7 +33,7 @@ function DraggablePreviewFile({
 }) {
   // 如果這個檔案被選中，且有多個選中的檔案，則拖動時包含所有選中的檔案
   const isMultiSelect = isSelected && selectedItemIds && selectedItemIds.size > 1;
-  
+
   // 計算選中的檔案列表 - 使用 useMemo 確保穩定性
   const selectedFiles = useMemo(() => {
     if (isMultiSelect && allPreviewItems && selectedItemIds) {
@@ -50,7 +50,7 @@ function DraggablePreviewFile({
       isBatchDrag: isMultiSelect, // 標記這是批量拖動
       selectedFiles: selectedFiles, // 所有選中的檔案名列表
     };
-    
+
     return data;
   }, [item.id, item.label, isMultiSelect, selectedFiles, selectedItemIds?.size]);
 
@@ -110,12 +110,14 @@ function DesktopPreview({
   selectedRegion,
   onRegionChange,
   selectedItemIds,
+  previewLabels = [],
 }: {
   previewItems: DesktopItem[];
   isPreviewMode?: boolean;
   selectedRegion?: { x: number; y: number; width: number; height: number } | null;
   onRegionChange?: (region: { x: number; y: number; width: number; height: number } | null) => void;
   selectedItemIds?: Set<string>;
+  previewLabels?: Array<{ label: string; x: number; y: number; width: number; color: string }>;
 }) {
   const { background } = useDesktop();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -260,6 +262,23 @@ function DesktopPreview({
             已選擇區域
           </div>
         )}
+        {/* Render partition group labels */}
+        {previewLabels.map((labelInfo, index) => (
+          <div
+            key={`label-${index}`}
+            className="absolute text-white text-xs font-semibold drop-shadow-md flex items-center justify-center rounded"
+            style={{
+              left: labelInfo.x * scale,
+              top: labelInfo.y * scale,
+              width: labelInfo.width * scale,
+              height: 32 * scale,
+              backgroundColor: labelInfo.color,
+              transformOrigin: 'top left',
+            }}
+          >
+            {labelInfo.label}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -402,8 +421,9 @@ export function OrganizerApp({
   // Preview state
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [previewItems, setPreviewItems] = useState<DesktopItem[]>(items);
+  const [previewLabels, setPreviewLabels] = useState<Array<{ label: string; x: number; y: number; width: number; color: string }>>([]);
   const [selectedRegion, setSelectedRegion] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
-  
+
   // 保存拖動開始時的 selectedItemIds 快照，避免拖動過程中 selectedRegion 被清除導致數據丟失
   const dragStartSelectedItemIdsRef = useRef<Set<string> | null>(null);
 
@@ -741,6 +761,7 @@ export function OrganizerApp({
     if (isPreviewMode) {
       setIsPreviewMode(false);
       setPreviewItems(items);
+      setPreviewLabels([]);
       return;
     }
 
@@ -751,6 +772,7 @@ export function OrganizerApp({
 
     // Execute all rules in order
     let resultItems = [...items];
+    let resultLabels: Array<{ label: string; x: number; y: number; width: number; color: string }> = [];
     let success = false;
 
     for (const rule of rules) {
@@ -777,6 +799,12 @@ export function OrganizerApp({
           } else {
             resultItems = result.items;
           }
+
+          // If this result has groupLabels (from partition), store them
+          if (result.groupLabels && result.groupLabels.length > 0) {
+            resultLabels = result.groupLabels;
+          }
+
           success = true;
         }
       }
@@ -784,6 +812,7 @@ export function OrganizerApp({
 
     if (success) {
       setPreviewItems(resultItems);
+      setPreviewLabels(resultLabels);
       setIsPreviewMode(true);
     } else {
       alert('無法執行這些規則，請檢查規則格式');
@@ -960,7 +989,7 @@ export function OrganizerApp({
   const handleTagDragStart = (event: DragStartEvent) => {
     const { active } = event;
     const activeId = active.id as string;
-    
+
     // 如果是從 preview 拖動檔案，保存當前的 selectedItemIds
     if (activeId.startsWith("preview-file-")) {
       dragStartSelectedItemIdsRef.current = selectedItemIds ? new Set(selectedItemIds) : null;
@@ -1009,22 +1038,22 @@ export function OrganizerApp({
       if (targetTagId) {
         // 檢查是否是批量拖動
         // 使用拖動開始時保存的 selectedItemIds 快照，避免拖動過程中 selectedRegion 被清除導致數據丟失
-        const snapshotSelectedItemIds = activeId.startsWith("preview-file-") 
-          ? dragStartSelectedItemIdsRef.current 
+        const snapshotSelectedItemIds = activeId.startsWith("preview-file-")
+          ? dragStartSelectedItemIdsRef.current
           : null;
-        
+
         const draggedItemId = activeId.replace("preview-file-", "");
         const isDraggedItemSelected = snapshotSelectedItemIds?.has(draggedItemId) ?? false;
         const hasMultipleSelections = snapshotSelectedItemIds && snapshotSelectedItemIds.size > 1;
         const isBatchDrag = hasMultipleSelections && isDraggedItemSelected;
-        
+
         // 如果是批量拖動，獲取所有選中的檔案；否則只拖動當前檔案
         const selectedFiles = isBatchDrag && previewItems && snapshotSelectedItemIds
           ? previewItems.filter(i => snapshotSelectedItemIds.has(i.id)).map(i => i.label)
           : [fileName];
-        
+
         const filesToMove = selectedFiles;
-        
+
         // 拖動結束後清除快照
         dragStartSelectedItemIdsRef.current = null;
 
@@ -1345,6 +1374,7 @@ export function OrganizerApp({
                 selectedRegion={selectedRegion}
                 onRegionChange={setSelectedRegion}
                 selectedItemIds={selectedItemIds}
+                previewLabels={previewLabels}
               />
             </div>
           </div>
