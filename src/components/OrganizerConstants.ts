@@ -92,6 +92,12 @@ export function getActionOptionsWithFolders(folders: string[], zipNames: string[
             ],
         },
         {
+            label: "Partition",
+            children: [
+                { label: "Partition by Tag" },
+            ],
+        },
+        {
             label: "Put in folder",
             children: putInFolderChildren,
         },
