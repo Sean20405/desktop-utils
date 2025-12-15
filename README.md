@@ -1,89 +1,109 @@
-# desktop-utils
+<h1 align="center">Desktop Organizer</h1>
+<h4 align="center">An application (web demo, React-based) designed to help organize desktop with AI-powered features</h4>
+<p align="center">
+  <a href="#authors">Authors</a>&nbsp;&nbsp;•&nbsp;
+  <a href="#features">Features</a>&nbsp;&nbsp;•&nbsp;
+  <a href="#getting-started">Getting Started</a>&nbsp;&nbsp;•&nbsp;
+  <a href="#project-structure">Project Structure</a>&nbsp;&nbsp;•&nbsp;
+  <a href="#license">License</a>
+</p>
 
-A desktop utility application built with React and Vite.
+## Authors
+<a href="https://github.com/Sean20405/desktop-utils/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=Sean20405/desktop-utils" />
+</a>
+
+## Features
+
+- **Desktop Visualization**: View your current desktop layout in a web interface.
+- **AI-Powered Organization**:
+  - **Generate Tags**: Analyzes your desktop files and automatically suggests appropriate categories/tags using Google Gemini AI.
+  - **Assign Tags**: Automatically assigns files to existing tags based on their names and characteristics.
+- **Customizable Layout**: Organize your desktop icons efficiently.
+- **Desktop Info Extractor**: A C# utility to extract icon positions and images from your actual Windows desktop.
 
 ## Getting Started
 
-### Prerequisites
+### 0. Prerequisites
 
 - Node.js (version 14 or higher)
 - npm (comes with Node.js)
 - Google Gemini API Key (for AI features)
+- Windows OS (required for the `GetDesktopInfo` extraction tool. Optional, if you want to use your own desktop content)
 
-### Installation
+### 1. Installation
 
-1. Clone the repository
-2. Install dependencies:
+Clone the repository and install dependencies:
+
 ```bash
+git clone https://github.com/Sean20405/desktop-utils
+cd desktop-utils
 npm install
 ```
 
-3. Set up Gemini API Key:
-- Get your API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
-- We use gemini-2.5-flash
-- There are 2 methods to use api key:
-- method 1: Set API key in enviroment
-   - Create a `.env` file in the root directory
-   - Add the following line:
+### 2. Setup Gemini API Key
+
+To use the AI features, you need a Google Gemini API key. You can obtain one from [Google AI Studio](https://makersuite.google.com/app/apikey).
+
+There are two ways to configure the API key:
+
+- **Method 1: Environment Variable (Recommended for Dev)**
+   - Create a `.env` file in the root directory and add:
    ```
    VITE_GEMINI_API_KEY=your_api_key_here
    ```
-- method 2: Set API key through entering in App
-   - Open tag page
-   - click any AI button
-   - if there is no known API key, a window will appear and you can enter your api key
-   - API key will only store in session. If click F5, the key will be deleted
-
-4. Get your desktop information
-- Run `GetDesktopInfo.exe`, it will extract your current desktop layout along with the icon image
-- Wrap the image and `Desktop_Icons_Info.txt` into a folder (reference: [src/data/desktop_icon_info](src/data/desktop_icon_info))
-- Set the variable `SKIP_UPLOAD` to false to enable uploading, otherwise it will use the default data in [src/data/desktop_icon_info](src/data/desktop_icon_info)
-- Upload the folder, then you can see your desktop layout showing in the website
+- **Method 2: In-App Entry**
+   1. Open the application and navigate to the Tag page.
+   2. If there is no known API key, a window will appear and you can enter your api key
 
 >[!Note]
-> For more detail about `GetDesktopInfo.exe`, please see [DesktopIconTool branch](https://github.com/Sean20405/desktop-utils/tree/DesktopIconTool)
+> API key will only store in session. If click F5, the key will be deleted.
 
-### Development
+### 3. Extract Desktop Information (Optional)
 
-To run the application in development mode:
+To visualize your own desktop, you need to extract the layout data using our executable file
+
+1. Navigate to [Latest Release](releases/latest) to download the zip file. Or click here: [DesktopInfo (.zip)](https://github.com/Sean20405/desktop-utils/releases/download/v1.0.0/DesktopInfo.zip)
+2. Unzip the file and run the executable file (GetDesktopInfo.exe). You may need to disable your antivirus software.
+   * Running the tool will generate:
+      * `Desktop_Icons_Info.txt`: Contains coordinates and metadata.
+      * Icon images extracted from your desktop.
+4. Organize these files into a folder.
+
+### 4. Running the Application
+
+Start the development server:
 
 ```bash
 npm run dev
 ```
 
-This will start the development server at `http://localhost:5173/`
+### 5. Using Your Data
 
-The page will automatically reload when you make changes to the code.
+1. When the app loads, you will see an upload screen (unless `SKIP_UPLOAD` is set to `true` in `src/App.tsx`).
+2. Upload the folder containing your `Desktop_Icons_Info.txt` and icon images.
+3. The application will render your desktop layout.
 
-## Features
+>[!Note]
+> To skip the upload screen and use default test data for development, set `const SKIP_UPLOAD = true;` in `src/App.tsx`.*
 
-### AI-Powered Tag Management
+## Project Structure
 
-The application includes two AI features powered by Google Gemini:
-
-1. **AI Generate Tag**: Analyzes desktop files and automatically suggests appropriate tags for categorization
-2. **AI Assign Tag**: Automatically assigns desktop files to existing tags based on their characteristics
-
-Both features require a valid Gemini API key to function.
-
-<!--
-
-### Build
-
-To create a production build:
-
-```bash
-npm run build
+```
+.
+├── src/
+│   ├── components/        # UI components
+│   ├── context/           # React Context for state management
+│   ├── data/              # Default data for testing and demos
+│   ├── utils/             # Utility functions
+│   ├── App.tsx            # Main application entry point
+│   └── main.tsx           # React DOM rendering
+├── DesktopInfo/           # C# project for extracting Windows desktop icon information
+│   ├── GetDesktopInfo/    # Source code for the extractor tool
+│   └── GetDesktopInfo.exe # Executable tool
+└── README.md
 ```
 
-The optimized files will be generated in the `dist` folder.
+## License
 
-### Preview Production Build
-
-To preview the production build locally:
-
-```bash
-npm run preview
-```
-
--->
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
