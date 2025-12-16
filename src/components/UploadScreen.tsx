@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { parseDesktopInfo } from '../utils/parser';
+import { loadDebugData } from '../utils/debugUtils';
 import type { DesktopItem } from '../context/DesktopContext';
 
 interface UploadScreenProps {
@@ -12,6 +13,16 @@ export function UploadScreen({ onDataLoaded }: UploadScreenProps) {
   const [width, setWidth] = useState(1920);
   const [height, setHeight] = useState(1080);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSkip = async () => {
+    try {
+      const { items, size } = await loadDebugData();
+      onDataLoaded(items, size);
+    } catch (e) {
+      setError('載入預設資料時發生錯誤');
+      console.error(e);
+    }
+  };
 
   const handleFiles = async (files: FileList) => {
     setError(null);
@@ -128,6 +139,13 @@ export function UploadScreen({ onDataLoaded }: UploadScreenProps) {
           className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors w-full"
         >
           選擇資料夾
+        </button>
+
+        <button
+          onClick={handleSkip}
+          className="mt-3 text-gray-500 hover:text-gray-700 text-sm underline w-full text-center"
+        >
+          略過上傳 (使用預設資料)
         </button>
 
         {error && (

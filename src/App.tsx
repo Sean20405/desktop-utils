@@ -10,7 +10,7 @@ import type { SimpleRule, TagItem, HistoryEntry } from './components/OrganizerTy
 import { loadDebugData } from './utils/debugUtils';
 import { findNearestAvailablePosition } from './utils/gridUtils';
 
-const SKIP_UPLOAD = true; // Set to true to skip upload screen for debugging
+const SKIP_UPLOAD = false; // Set to true to skip upload screen for debugging
 
 export interface WindowState {
   id: string;
