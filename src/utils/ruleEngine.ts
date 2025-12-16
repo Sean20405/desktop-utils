@@ -58,8 +58,12 @@ export function executeRule(
         return sortItems(filteredItems, context.items, 'type', context.selectedRegion);
     }
 
-    if (action === "Sort by last accessed" || action === "Sort > Sort by last accessed") {
+    if (action === "Sort by last accessed" || action === "Sort > Sort by last accessed time") {
         return sortItems(filteredItems, context.items, 'lastAccessed', context.selectedRegion);
+    }
+
+    if (action === "Sort by last modified" || action === "Sort > Sort by last modified time") {
+        return sortItems(filteredItems, context.items, 'lastModified', context.selectedRegion);
     }
 
     // Handle "Put in folder" action
